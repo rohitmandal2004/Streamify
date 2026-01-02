@@ -1,0 +1,36 @@
+/* Streamify Premium Theme */
+:root {
+    --primary-rgb: 99 102 241;
+    --primary: rgb(var(--primary-rgb));
+    --primary-dark: #4f46e5;
+    --secondary: #ec4899;
+    --accent: #8b5cf6;
+    --background: #0f172a;
+
+    --surface-rgb: 30 41 59;
+    --surface: rgb(var(--surface-rgb));
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.05);
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-background text-text-primary antialiased;
+    }
+}
+
+.text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-secondary;
+}
+
+.glass-panel {
+    @apply bg-surface/30 backdrop-blur-md border border-glass-border;
+}
