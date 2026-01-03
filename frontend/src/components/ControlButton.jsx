@@ -8,7 +8,8 @@ const ControlButton = ({
   variant = 'default',
   active = false,
   badge = null,
-  disabled = false
+  disabled = false,
+  className = ''
 }) => {
 
   const getColors = () => {
@@ -32,6 +33,7 @@ const ControlButton = ({
         relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 touch-manipulation
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${getColors()}
+        ${className}
       `}
     >
       {badge && (

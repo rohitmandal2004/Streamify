@@ -57,6 +57,7 @@ export default function VideoMeetComponent() {
     let [callStartTime] = useState(Date.now());
     let [participants, setParticipants] = useState([]);
     let [isSocketConnected, setIsSocketConnected] = useState(false);
+    let [participantNames, setParticipantNames] = useState({}); // socketId -> username mapping
 
     useEffect(() => {
         getPermissions();
@@ -254,9 +255,13 @@ export default function VideoMeetComponent() {
 
         socketRef.current.on('connect', () => {
             console.log('Socket connected:', socketRef.current.id);
-            socketRef.current.emit('join-call', window.location.href)
+            // Emit join-call with username
+            socketRef.current.emit('join-call', window.location.href, username)
             socketIdRef.current = socketRef.current.id
             setIsSocketConnected(true);
+            
+            // Store own username
+            setParticipantNames(prev => ({ ...prev, [socketRef.current.id]: username }));
 
             // Set up event listeners (only once per connection)
             socketRef.current.on('chat-message', addMessage)
@@ -290,13 +295,50 @@ export default function VideoMeetComponent() {
                     delete newHands[id];
                     return newHands;
                 });
+                // Remove from participant names
+                setParticipantNames(prev => {
+                    const newNames = { ...prev };
+                    delete newNames[id];
+                    return newNames;
+                });
             })
 
-            socketRef.current.on('user-joined', (id, clients) => {
-                setParticipants(clients.map((clientId, idx) => ({
-                    id: clientId,
-                    name: clientId === socketIdRef.current ? username : `Participant ${idx + 1}`
-                })));
+            socketRef.current.on('user-joined', (id, clients, usernamesList) => {
+                console.log('User joined event:', id, clients, usernamesList);
+                
+                    // Update participant names from server
+                if (usernamesList && Array.isArray(usernamesList)) {
+                    const namesMap = {};
+                    usernamesList.forEach(item => {
+                        if (item.socketId && item.username) {
+                            namesMap[item.socketId] = item.username;
+                        }
+                    });
+                    setParticipantNames(prev => {
+                        const updated = { ...prev, ...namesMap };
+                        console.log('Updated participant names:', updated);
+                        return updated;
+                    });
+                    
+                    // Update video objects with usernames
+                    setVideos(prevVideos => {
+                        return prevVideos.map(video => ({
+                            ...video,
+                            username: namesMap[video.socketId] || video.username
+                        }));
+                    });
+                    
+                    setParticipants(usernamesList.map(item => ({
+                        id: item.socketId,
+                        name: item.username
+                    })));
+                } else {
+                    // Fallback if usernamesList not provided
+                    setParticipants(clients.map((clientId, idx) => ({
+                        id: clientId,
+                        name: clientId === socketIdRef.current ? username : participantNames[clientId] || `Participant ${idx + 1}`
+                    })));
+                }
                 
                 clients.forEach((socketListId) => {
                     connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
@@ -309,29 +351,37 @@ export default function VideoMeetComponent() {
 
                     connections[socketListId].onaddstream = (event) => {
                         let videoExists = videoRef.current.find(video => video.socketId === socketListId);
+                        
+                        // Get username from state using functional update
+                        setParticipantNames(prevNames => {
+                            const participantName = prevNames[socketListId] || `Participant ${videos.length + 1}`;
+                            
+                            if (videoExists) {
+                                setVideos(videos => {
+                                    const updatedVideos = videos.map(video =>
+                                        video.socketId === socketListId ? { ...video, stream: event.stream, username: participantName } : video
+                                    );
+                                    videoRef.current = updatedVideos;
+                                    return updatedVideos;
+                                });
+                            } else {
+                                let newVideo = {
+                                    socketId: socketListId,
+                                    stream: event.stream,
+                                    username: participantName,
+                                    autoplay: true,
+                                    playsinline: true
+                                };
 
-                        if (videoExists) {
-                            setVideos(videos => {
-                                const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream: event.stream } : video
-                                );
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
-                        } else {
-                            let newVideo = {
-                                socketId: socketListId,
-                                stream: event.stream,
-                                autoplay: true,
-                                playsinline: true
-                            };
-
-                            setVideos(videos => {
-                                const updatedVideos = [...videos, newVideo];
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
-                        }
+                                setVideos(videos => {
+                                    const updatedVideos = [...videos, newVideo];
+                                    videoRef.current = updatedVideos;
+                                    return updatedVideos;
+                                });
+                            }
+                            
+                            return prevNames; // Return unchanged state
+                        });
                     };
 
                     if (window.localStream !== undefined && window.localStream !== null) {
@@ -560,7 +610,9 @@ export default function VideoMeetComponent() {
                         
                         {/* Name Label - Bottom Left */}
                         <div className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-md flex items-center gap-2 z-10">
-                            <span className="text-sm sm:text-base font-medium text-white">Participant</span>
+                            <span className="text-sm sm:text-base font-medium text-white">
+                                {mainVideo.username || participantNames[mainVideo.socketId] || 'Participant'}
+                            </span>
                             {raisedHands[mainVideo.socketId] && (
                                 <motion.span
                                     className="text-yellow-400 text-lg"
@@ -648,20 +700,22 @@ export default function VideoMeetComponent() {
                 </motion.button>
             </div>
 
-            {/* Control Bar - Google Meet Style */}
+            {/* Control Bar - Google Meet Style - Mobile Optimized */}
             <motion.div
-                className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 rounded-full shadow-2xl"
+                className="fixed bottom-2 sm:bottom-4 md:bottom-6 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 md:py-4 rounded-2xl sm:rounded-full shadow-2xl max-w-full sm:max-w-none"
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{ bottom: 'max(8px, calc(env(safe-area-inset-bottom, 0px) + 8px))' }}
             >
-                <div className="flex items-center justify-center gap-2 sm:gap-3">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 md:gap-3 overflow-x-auto scrollbar-hide">
                     <ControlButton
                         icon={audio ? MicIcon : MicOffIcon}
                         onClick={handleAudio}
                         tooltip={audio ? 'Mute microphone' : 'Unmute microphone'}
                         active={audio}
                         variant={audio ? 'default' : 'danger'}
+                        className="flex-shrink-0"
                     />
                     <ControlButton
                         icon={video ? VideocamIcon : VideocamOffIcon}
@@ -669,6 +723,7 @@ export default function VideoMeetComponent() {
                         tooltip={video ? 'Turn off camera' : 'Turn on camera'}
                         active={video}
                         variant={video ? 'default' : 'danger'}
+                        className="flex-shrink-0"
                     />
                     {screenAvailable && (
                         <ControlButton
@@ -676,6 +731,7 @@ export default function VideoMeetComponent() {
                             onClick={handleScreen}
                             tooltip={screen ? 'Stop sharing' : 'Share screen'}
                             active={screen}
+                            className="flex-shrink-0"
                         />
                     )}
                     <ControlButton
@@ -683,6 +739,7 @@ export default function VideoMeetComponent() {
                         onClick={handleRaiseHand}
                         tooltip="Raise hand"
                         active={raisedHands[socketIdRef.current] !== undefined || raisedHands['local'] !== undefined}
+                        className="flex-shrink-0"
                     />
                     <ControlButton
                         icon={ChatIcon}
@@ -693,15 +750,17 @@ export default function VideoMeetComponent() {
                         tooltip="Open chat"
                         active={showChat}
                         badge={newMessages > 0 ? newMessages : null}
+                        className="flex-shrink-0"
                     />
 
-                    <div className="w-px h-8 bg-white/20 mx-1 sm:mx-2"></div>
+                    <div className="w-px h-6 sm:h-8 bg-white/20 mx-1 sm:mx-2 flex-shrink-0"></div>
 
                     <ControlButton
                         icon={CallEndIcon}
                         onClick={handleEndCall}
                         tooltip="Leave call"
                         variant="danger"
+                        className="flex-shrink-0"
                     />
                 </div>
             </motion.div>
@@ -746,20 +805,23 @@ export default function VideoMeetComponent() {
                                 </div>
                                 <span className="text-xs text-green-400">●</span>
                             </div>
-                            {videos.map((video, index) => (
-                                <div key={video.socketId} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                                        {String.fromCharCode(65 + index)}
+                            {videos.map((video, index) => {
+                                const participantName = participantNames[video.socketId] || `Participant ${index + 1}`;
+                                return (
+                                    <div key={video.socketId} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                                            {participantName[0]?.toUpperCase() || String.fromCharCode(65 + index)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-medium text-white">{participantName}</div>
+                                            <div className="text-xs text-gray-400">Connected</div>
+                                        </div>
+                                        {raisedHands[video.socketId] && (
+                                            <span className="text-xl animate-bounce">✋</span>
+                                        )}
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="font-medium text-white">Participant {index + 1}</div>
-                                        <div className="text-xs text-gray-400">Connected</div>
-                                    </div>
-                                    {raisedHands[video.socketId] && (
-                                        <span className="text-xl animate-bounce">✋</span>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </motion.div>
                 )}

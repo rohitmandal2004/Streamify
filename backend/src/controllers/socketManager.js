@@ -4,6 +4,7 @@ import { Server } from "socket.io"
 let connections = {}
 let messages = {}
 let timeOnline = {}
+let userNames = {} // Store socketId -> username mapping
 
 export const connectToSocket = (server) => {
     const io = new Server(server, {
@@ -20,21 +21,29 @@ export const connectToSocket = (server) => {
 
         console.log("SOMETHING CONNECTED")
 
-        socket.on("join-call", (path) => {
+        socket.on("join-call", (path, username) => {
+            console.log("User joining:", socket.id, "username:", username, "path:", path);
 
             if (connections[path] === undefined) {
                 connections[path] = []
             }
             connections[path].push(socket.id)
 
+            // Store username
+            if (username) {
+                userNames[socket.id] = username;
+            }
+
             timeOnline[socket.id] = new Date();
 
-            // connections[path].forEach(elem => {
-            //     io.to(elem)
-            // })
-
+            // Broadcast to all participants in the room
             for (let a = 0; a < connections[path].length; a++) {
-                io.to(connections[path][a]).emit("user-joined", socket.id, connections[path])
+                // Send list of all usernames in the room
+                const usernamesInRoom = connections[path].map(id => ({
+                    socketId: id,
+                    username: userNames[id] || `Participant ${connections[path].indexOf(id) + 1}`
+                }));
+                io.to(connections[path][a]).emit("user-joined", socket.id, connections[path], usernamesInRoom)
             }
 
             if (messages[path] !== undefined) {
@@ -122,6 +131,9 @@ export const connectToSocket = (server) => {
                         var index = connections[key].indexOf(socket.id)
 
                         connections[key].splice(index, 1)
+                        
+                        // Remove username mapping
+                        delete userNames[socket.id]
 
 
                         if (connections[key].length === 0) {
