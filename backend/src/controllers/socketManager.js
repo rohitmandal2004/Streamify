@@ -112,6 +112,29 @@ export const connectToSocket = (server) => {
             }
         })
 
+        socket.on("reaction", (emoji, username) => {
+            console.log("Reaction received:", emoji, "from:", socket.id, "username:", username);
+            
+            const [matchingRoom, found] = Object.entries(connections)
+                .reduce(([room, isFound], [roomKey, roomValue]) => {
+                    if (!isFound && roomValue.includes(socket.id)) {
+                        return [roomKey, true];
+                    }
+                    return [room, isFound];
+                }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    // Send to everyone INCLUDING sender (so they see their own reaction float up)
+                    // Or maybe sender handles their own locally. 
+                    // Let's send to others only and let sender handle local.
+                    if (elem !== socket.id) {
+                        io.to(elem).emit("reaction", socket.id, emoji, username)
+                    }
+                })
+            }
+        })
+
         socket.on("disconnect", () => {
 
             var diffTime = Math.abs(timeOnline[socket.id] - new Date())

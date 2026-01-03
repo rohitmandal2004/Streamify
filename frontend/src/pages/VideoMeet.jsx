@@ -30,6 +30,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import OptionsDrawer from '../components/OptionsDrawer';
+import EmojiPicker from '../components/EmojiPicker';
+import EmojiBubble from '../components/EmojiBubble';
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import server from '../environment';
@@ -67,6 +69,8 @@ export default function VideoMeetComponent() {
     let [raisedHands, setRaisedHands] = useState({});
     let [showParticipants, setShowParticipants] = useState(false);
     let [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
+    let [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    let [reactions, setReactions] = useState([]); // { id, emoji, senderId }
     let [showMeetingInfo, setShowMeetingInfo] = useState(false);
     let [callStartTime] = useState(Date.now());
     let [participants, setParticipants] = useState([]);
@@ -305,6 +309,15 @@ export default function VideoMeetComponent() {
                 }
             });
 
+            socketRef.current.on('reaction', (senderId, emoji) => {
+                const newReaction = {
+                    id: Date.now() + Math.random(),
+                    emoji,
+                    senderId
+                };
+                setReactions(prev => [...prev, newReaction]);
+            });
+
             socketRef.current.on('user-left', (id) => {
                 setVideos((videos) => videos.filter((video) => video.socketId !== id))
                 setRaisedHands(prev => {
@@ -510,6 +523,21 @@ export default function VideoMeetComponent() {
         }, 5000);
     }
 
+    let handleSendReaction = (emoji) => {
+        // Emit to server
+        if (socketRef.current) {
+            socketRef.current.emit('reaction', emoji, username || 'Anonymous');
+        }
+
+        // Add locally immediately
+        const newReaction = {
+            id: Date.now() + Math.random(),
+            emoji,
+            senderId: socketRef.current ? socketRef.current.id : 'local'
+        };
+        setReactions(prev => [...prev, newReaction]);
+    };
+
     const formatDuration = (startTime) => {
         const seconds = Math.floor((Date.now() - startTime) / 1000);
         const hours = Math.floor(seconds / 3600);
@@ -605,45 +633,58 @@ export default function VideoMeetComponent() {
     const switchCamera = async () => {
         try {
             const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
-            setFacingMode(newFacingMode);
 
-            if (video) {
-                const stream = await navigator.mediaDevices.getUserMedia({
+            // Log for debugging
+            console.log(`Attempting to switch camera to: ${newFacingMode}`);
+
+            let stream;
+            try {
+                // First try with exact constraint
+                stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: { exact: newFacingMode } }
                 });
+            } catch (err) {
+                console.warn("Exact facingMode failed, trying loose constraint...", err);
+                // Fallback to loose constraint
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: newFacingMode }
+                });
+            }
 
+            if (stream) {
                 const newVideoTrack = stream.getVideoTracks()[0];
 
+                // Update State
+                setFacingMode(newFacingMode);
+
                 // Stop old video track
-                const oldVideoTrack = window.localStream.getVideoTracks()[0];
-                if (oldVideoTrack) {
-                    oldVideoTrack.stop();
-                    window.localStream.removeTrack(oldVideoTrack);
+                if (window.localStream) {
+                    const oldVideoTrack = window.localStream.getVideoTracks()[0];
+                    if (oldVideoTrack) {
+                        oldVideoTrack.stop();
+                        window.localStream.removeTrack(oldVideoTrack);
+                    }
+                    window.localStream.addTrack(newVideoTrack);
                 }
 
-                window.localStream.addTrack(newVideoTrack);
-                localVideoref.current.srcObject = window.localStream;
+                // Update Local Video Ref
+                if (localVideoref.current) {
+                    localVideoref.current.srcObject = null; // Clear first
+                    localVideoref.current.srcObject = window.localStream;
+                }
 
                 // Replace track in all peer connections
                 for (let id in connections) {
                     const sender = connections[id].getSenders().find(s => s.track && s.track.kind === 'video');
                     if (sender) {
+                        console.log(`Replacing track for connection ${id}`);
                         sender.replaceTrack(newVideoTrack);
                     }
                 }
             }
         } catch (error) {
             console.error("Error switching camera:", error);
-            // Fallback for devices without explicit support/permissions
-            try {
-                // Try non-exact constraint if exact failed
-                const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: newFacingMode }
-                });
-                // ... same replacement logic simplified for brevity or user notification
-                // For now just logging error
-            } catch (e) { }
+            alert("Could not switch camera. Please ensure you have multiple cameras and permissions are granted.");
         }
     };
 
@@ -759,8 +800,9 @@ export default function VideoMeetComponent() {
 
                     <ControlButton
                         icon={EmojiEmotionsIcon} // Reaction placeholder
-                        onClick={() => { }} // TODO: Add reaction menu
-                        className="!bg-[#3C4043] !text-white !w-12 !h-12 !rounded-full"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        active={showEmojiPicker}
+                        className={`!w-12 !h-12 !rounded-full ${showEmojiPicker ? '!bg-blue-600 !text-white' : '!bg-[#3C4043] !text-white'}`}
                     />
 
                     <ControlButton
@@ -770,6 +812,30 @@ export default function VideoMeetComponent() {
                     />
                 </div>
             </motion.div>
+
+            {/* Emoji Picker */}
+            <AnimatePresence>
+                {showEmojiPicker && (
+                    <EmojiPicker
+                        onSelect={(emoji) => {
+                            handleSendReaction(emoji);
+                            setShowEmojiPicker(false);
+                        }}
+                        onClose={() => setShowEmojiPicker(false)}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Floating Reactions */}
+            {reactions.map((reaction) => (
+                <EmojiBubble
+                    key={reaction.id}
+                    emoji={reaction.emoji}
+                    onComplete={() => {
+                        setReactions(prev => prev.filter(r => r.id !== reaction.id));
+                    }}
+                />
+            ))}
 
             {/* Options Drawer */}
             <OptionsDrawer
