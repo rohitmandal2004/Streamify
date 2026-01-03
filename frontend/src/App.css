@@ -1,20 +1,31 @@
-/* Streamify Premium Theme */
+/* Streamify Premium Royal Minimal Theme */
 :root {
-    --primary-rgb: 99 102 241;
+    /* Royal Navy & Indigo Palette */
+    --primary-rgb: 99 102 241; /* Indigo-500 */
     --primary: rgb(var(--primary-rgb));
-    --primary-dark: #4f46e5;
-    --secondary: #ec4899;
-    --accent: #8b5cf6;
-    --background: #0f172a;
-
-    --surface-rgb: 30 41 59;
+    --primary-dark: #6366f1;
+    --primary-light: #818cf8;
+    --secondary: #a78bfa; /* Purple-400 */
+    --accent: #8b5cf6; /* Purple-500 */
+    --background: #0a0e27; /* Deep navy */
+    
+    /* Surface colors with glassmorphism */
+    --surface-rgb: 15 23 42; /* Slate-900 */
     --surface: rgb(var(--surface-rgb));
 
+    /* Text colors */
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
 
+    /* Glassmorphism */
     --glass-border: rgba(255, 255, 255, 0.1);
     --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-bg-hover: rgba(255, 255, 255, 0.08);
+    
+    /* Royal gradients */
+    --gradient-royal: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+    --gradient-royal-subtle: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
 }
 
 @tailwind base;
@@ -24,13 +35,39 @@
 @layer base {
     body {
         @apply bg-background text-text-primary antialiased;
+        background-image: 
+            radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
     }
 }
 
 .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-secondary;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400;
 }
 
 .glass-panel {
-    @apply bg-surface/30 backdrop-blur-md border border-glass-border;
+    @apply bg-surface/40 backdrop-blur-xl border border-white/10 shadow-lg;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.glass-panel:hover {
+    @apply border-indigo-500/30;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+}
+
+/* Royal glow effects */
+.royal-glow {
+    box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.4), 0 0 40px -10px rgba(139, 92, 246, 0.2);
+}
+
+.royal-glow-hover:hover {
+    box-shadow: 0 0 30px -5px rgba(99, 102, 241, 0.6), 0 0 60px -10px rgba(139, 92, 246, 0.3);
+}
+
+/* Smooth transitions */
+* {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
 }

@@ -35,13 +35,48 @@ const DraggableVideo = ({ videoRef, username = 'You' }) => {
     setIsDragging(false);
   };
 
+  // Touch support for mobile
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStart({
+      x: touch.clientX - position.x,
+      y: touch.clientY - position.y,
+    });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const newX = touch.clientX - dragStart.x;
+    const newY = touch.clientY - dragStart.y;
+
+    const maxX = window.innerWidth - (containerRef.current?.offsetWidth || 200);
+    const maxY = window.innerHeight - (containerRef.current?.offsetHeight || 150);
+
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY)),
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
       };
     }
   }, [isDragging, dragStart]);
@@ -49,20 +84,21 @@ const DraggableVideo = ({ videoRef, username = 'You' }) => {
   return (
     <motion.div
       ref={containerRef}
-      className="fixed w-48 sm:w-64 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-white/20 z-50 cursor-grab active:cursor-grabbing"
+      className="fixed w-32 sm:w-48 md:w-64 aspect-video bg-black rounded-lg sm:rounded-xl overflow-hidden shadow-2xl border border-white/20 z-50 cursor-grab active:cursor-grabbing touch-manipulation"
       style={{
-        left: 0, // Utilize left/top with translate for better performance usually, but fixed position state updates work too
-        x: position.x, // Framer Motion handles the transform
+        left: 0,
+        x: position.x,
         y: position.y,
       }}
-      drag={false} // We are implementing custom drag bounds that are cleaner
+      drag={false}
       dragMomentum={false}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center z-10 pointer-events-none">
-        <span className="text-xs font-semibold text-white px-2 py-0.5 rounded bg-black/40 backdrop-blur-md">
+      <div className="absolute top-0 left-0 right-0 p-1.5 sm:p-2 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center z-10 pointer-events-none">
+        <span className="text-[10px] sm:text-xs font-semibold text-white px-1.5 sm:px-2 py-0.5 rounded bg-black/40 backdrop-blur-md truncate max-w-[70%]">
           {username} (You)
         </span>
         <div className="text-white/50">

@@ -9,13 +9,18 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
 import ChatIcon from '@mui/icons-material/Chat';
-import DraggableVideo from '../components/DraggableVideo';
+import PanToolIcon from '@mui/icons-material/PanTool';
+import PeopleIcon from '@mui/icons-material/People';
+import InfoIcon from '@mui/icons-material/Info';
+import SelfVideo from '../components/SelfVideo';
 import ChatPanel from '../components/ChatPanel';
 import ControlButton from '../components/ControlButton';
 import MeetingInfo from '../components/MeetingInfo';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import PersonIcon from '@mui/icons-material/Person';
+import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useParams } from 'react-router-dom';
 import server from '../environment';
 const server_url = server;
@@ -46,6 +51,12 @@ export default function VideoMeetComponent() {
     let [username, setUsername] = useState("");
     const videoRef = useRef([]);
     let [videos, setVideos] = useState([]);
+    let [raisedHands, setRaisedHands] = useState({});
+    let [showParticipants, setShowParticipants] = useState(false);
+    let [showMeetingInfo, setShowMeetingInfo] = useState(false);
+    let [callStartTime] = useState(Date.now());
+    let [participants, setParticipants] = useState([]);
+    let [isSocketConnected, setIsSocketConnected] = useState(false);
 
     useEffect(() => {
         getPermissions();
@@ -242,16 +253,51 @@ export default function VideoMeetComponent() {
         socketRef.current.on('signal', gotMessageFromServer)
 
         socketRef.current.on('connect', () => {
+            console.log('Socket connected:', socketRef.current.id);
             socketRef.current.emit('join-call', window.location.href)
             socketIdRef.current = socketRef.current.id
+            setIsSocketConnected(true);
 
+            // Set up event listeners (only once per connection)
             socketRef.current.on('chat-message', addMessage)
+
+            socketRef.current.on('raise-hand', (socketId, username) => {
+                console.log('Received raise-hand event:', socketId, username, 'Current socketId:', socketIdRef.current);
+                // Don't update if it's our own hand (we already updated locally)
+                if (socketId !== socketIdRef.current) {
+                    setRaisedHands(prev => {
+                        const updated = { ...prev, [socketId]: username };
+                        console.log('Updated raised hands from other user:', updated);
+                        return updated;
+                    });
+                    setTimeout(() => {
+                        setRaisedHands(prev => {
+                            const newHands = { ...prev };
+                            delete newHands[socketId];
+                            console.log('Auto-dismissed raise hand from other user:', socketId);
+                            return newHands;
+                        });
+                    }, 5000);
+                } else {
+                    console.log('Ignoring own raise-hand event (already handled locally)');
+                }
+            });
 
             socketRef.current.on('user-left', (id) => {
                 setVideos((videos) => videos.filter((video) => video.socketId !== id))
+                setRaisedHands(prev => {
+                    const newHands = { ...prev };
+                    delete newHands[id];
+                    return newHands;
+                });
             })
 
             socketRef.current.on('user-joined', (id, clients) => {
+                setParticipants(clients.map((clientId, idx) => ({
+                    id: clientId,
+                    name: clientId === socketIdRef.current ? username : `Participant ${idx + 1}`
+                })));
+                
                 clients.forEach((socketListId) => {
                     connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
 
@@ -360,6 +406,55 @@ export default function VideoMeetComponent() {
         window.location.href = "/"
     }
 
+    let handleRaiseHand = () => {
+        // Always update local state for immediate visual feedback
+        const currentSocketId = socketIdRef.current || 'local';
+        const currentUsername = username || 'You';
+        
+        console.log('Raising hand - Username:', currentUsername, 'SocketId:', currentSocketId);
+        
+        // Update local state immediately for visual feedback
+        setRaisedHands(prev => {
+            const updated = { ...prev, [currentSocketId]: currentUsername };
+            console.log('Updated raised hands (local):', updated);
+            return updated;
+        });
+        
+        // Try to emit to server if socket is available
+        if (socketRef.current && socketIdRef.current && username) {
+            try {
+                console.log('Emitting raise-hand event to server');
+                socketRef.current.emit('raise-hand', username);
+            } catch (error) {
+                console.error('Error emitting raise-hand:', error);
+            }
+        } else {
+            console.warn('Socket not ready, showing local raise hand only');
+        }
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            setRaisedHands(prev => {
+                const newHands = { ...prev };
+                delete newHands[currentSocketId];
+                console.log('Auto-dismissed raise hand');
+                return newHands;
+            });
+        }, 5000);
+    }
+
+    const formatDuration = (startTime) => {
+        const seconds = Math.floor((Date.now() - startTime) / 1000);
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    };
+
     let handleSendMessage = (messageText) => {
         if (socketRef.current) {
             socketRef.current.emit('chat-message', messageText, username)
@@ -369,7 +464,7 @@ export default function VideoMeetComponent() {
     const addMessage = (data, sender, socketIdSender) => {
         setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: sender, data: data }
+            { sender: sender, data: data, timestamp: Date.now() }
         ]);
         if (socketIdSender !== socketIdRef.current) {
             setNewMessages((prevNewMessages) => prevNewMessages + 1);
@@ -391,22 +486,19 @@ export default function VideoMeetComponent() {
                 <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
                 <motion.div
-                    className="w-full max-w-lg bg-surface/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative z-10"
+                    className="w-full max-w-lg bg-surface/50 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl relative z-10"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4 }}
                 >
-                    <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-2">Ready to join?</h2>
-                        <p className="text-gray-400">Enter your name to let others know who you are</p>
+                    <div className="text-center mb-6 sm:mb-8">
+                        <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-2">Ready to join?</h2>
+                        <p className="text-sm sm:text-base text-gray-400">Enter your name to let others know who you are</p>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="relative aspect-video bg-black/50 rounded-2xl overflow-hidden border border-white/5 shadow-inner group">
+                    <div className="space-y-4 sm:space-y-6">
+                        <div className="relative aspect-video bg-black/50 rounded-xl sm:rounded-2xl overflow-hidden border border-white/5 shadow-inner group">
                             <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover mirror-mode" />
-                            <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {/* Optional: Add mini controls here later */}
-                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -439,79 +531,144 @@ export default function VideoMeetComponent() {
         );
     }
 
-    // Main Video Call Room
-    return (
-        <div className="h-screen w-screen bg-background text-white overflow-hidden relative flex flex-col">
-            {/* Meeting Info Header */}
-            <div className="absolute top-4 left-4 z-40">
-                <MeetingInfo meetingId={meetingId} />
-            </div>
+    // Main Video Call Room - Google Meet Style
+    const mainVideo = videos.length > 0 ? videos[0] : null;
+    const otherVideos = videos.slice(1);
 
-            {/* Video Grid */}
-            <div className={`
-                flex-1 p-4 grid gap-4 overflow-y-auto content-center
-                ${videos.length === 0 ? 'grid-cols-1 md:grid-cols-1' : ''}
-                ${videos.length === 1 ? 'grid-cols-1 md:grid-cols-2' : ''}
-                ${videos.length >= 2 ? 'grid-cols-2 md:grid-cols-3' : ''}
-            `}>
-                {videos.map((video, index) => (
+    return (
+        <div className="h-screen w-screen bg-black text-white overflow-hidden relative">
+            {/* Main Video Feed - Google Meet Style */}
+            <div className="absolute inset-0 flex items-center justify-center">
+                {mainVideo ? (
                     <motion.div
-                        key={video.socketId}
-                        className="relative bg-surface rounded-2xl overflow-hidden shadow-lg border border-white/5 aspect-video"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.1 }}
+                        className="relative w-full h-full bg-black"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
                     >
                         <video
-                            data-socket={video.socketId}
+                            data-socket={mainVideo.socketId}
                             ref={ref => {
-                                if (ref && video.stream) {
-                                    ref.srcObject = video.stream;
+                                if (ref && mainVideo.stream) {
+                                    ref.srcObject = mainVideo.stream;
                                 }
                             }}
                             autoPlay
                             playsInline
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                         />
-                        <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1 rounded text-xs backdrop-blur-sm">
-                            Participant
+                        
+                        {/* Name Label - Bottom Left */}
+                        <div className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-md flex items-center gap-2 z-10">
+                            <span className="text-sm sm:text-base font-medium text-white">Participant</span>
+                            {raisedHands[mainVideo.socketId] && (
+                                <motion.span
+                                    className="text-yellow-400 text-lg"
+                                    animate={{ rotate: [0, 14, -8, 14, -8, 0] }}
+                                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
+                                >
+                                    ✋
+                                </motion.span>
+                            )}
                         </div>
+                        
                     </motion.div>
-                ))}
-
-                {videos.length === 0 && (
-                    <div className="col-span-full h-full flex flex-col items-center justify-center text-gray-500 gap-4">
-                        <div className="w-24 h-24 rounded-full bg-surface animate-pulse flex items-center justify-center">
-                            <PersonIcon style={{ fontSize: 40, opacity: 0.2 }} />
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
+                        <div className="w-32 h-32 rounded-full bg-surface/20 animate-pulse flex items-center justify-center">
+                            <PersonIcon style={{ fontSize: 64, opacity: 0.3 }} />
                         </div>
-                        <p className="text-xl font-medium">Waiting for others to join...</p>
-                        <p className="text-sm">Share the meeting link to invite people</p>
+                        <p className="text-xl sm:text-2xl font-medium">Waiting for others to join...</p>
+                        <p className="text-sm sm:text-base">Share the meeting link to invite people</p>
                     </div>
                 )}
             </div>
 
-            {/* Draggable Self Video */}
-            <DraggableVideo videoRef={localVideoref} username={username || 'You'} />
+            {/* Self Video - Fixed Bottom Right */}
+            {video || audio ? (
+                <SelfVideo 
+                    videoRef={localVideoref} 
+                    username={username || 'You'}
+                    audioEnabled={audio}
+                    videoEnabled={video}
+                />
+            ) : null}
 
-            {/* Control Bar */}
+            {/* Meeting Info - Bottom Left (Google Meet Style) */}
+            <div className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 z-30">
+                <div className="flex flex-col gap-1 text-white/80 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2">
+                        <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-white/40">•</span>
+                        <span className="font-mono">{meetingId}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Side Panel - Participants, Chat, etc. */}
+            <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
+                <motion.button
+                    onClick={() => setShowMeetingInfo(!showMeetingInfo)}
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                >
+                    <InfoIcon style={{ fontSize: 20 }} />
+                </motion.button>
+                
+                <motion.button
+                    onClick={() => setShowParticipants(!showParticipants)}
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm relative"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                >
+                    <PeopleIcon style={{ fontSize: 20 }} />
+                    {videos.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-xs font-bold flex items-center justify-center">
+                            {videos.length + 1}
+                        </span>
+                    )}
+                </motion.button>
+
+                <motion.button
+                    onClick={() => {
+                        setShowChat(!showChat);
+                        setNewMessages(0);
+                    }}
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm relative"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                >
+                    <ChatIcon style={{ fontSize: 20 }} />
+                    {newMessages > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-xs font-bold flex items-center justify-center">
+                            {newMessages}
+                        </span>
+                    )}
+                </motion.button>
+            </div>
+
+            {/* Control Bar - Google Meet Style */}
             <motion.div
-                className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-surface/80 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-full shadow-2xl"
-                initial={{ y: 100 }}
-                animate={{ y: 0 }}
+                className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 rounded-full shadow-2xl"
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-                <div className="flex items-center gap-4">
-                    <ControlButton
-                        icon={video ? VideocamIcon : VideocamOffIcon}
-                        onClick={handleVideo}
-                        tooltip={video ? 'Turn off camera' : 'Turn on camera'}
-                        active={video}
-                    />
+                <div className="flex items-center justify-center gap-2 sm:gap-3">
                     <ControlButton
                         icon={audio ? MicIcon : MicOffIcon}
                         onClick={handleAudio}
                         tooltip={audio ? 'Mute microphone' : 'Unmute microphone'}
                         active={audio}
+                        variant={audio ? 'default' : 'danger'}
+                    />
+                    <ControlButton
+                        icon={video ? VideocamIcon : VideocamOffIcon}
+                        onClick={handleVideo}
+                        tooltip={video ? 'Turn off camera' : 'Turn on camera'}
+                        active={video}
+                        variant={video ? 'default' : 'danger'}
                     />
                     {screenAvailable && (
                         <ControlButton
@@ -522,21 +679,28 @@ export default function VideoMeetComponent() {
                         />
                     )}
                     <ControlButton
+                        icon={PanToolIcon}
+                        onClick={handleRaiseHand}
+                        tooltip="Raise hand"
+                        active={raisedHands[socketIdRef.current] !== undefined || raisedHands['local'] !== undefined}
+                    />
+                    <ControlButton
                         icon={ChatIcon}
                         onClick={() => {
                             setShowChat(!showChat);
                             setNewMessages(0);
                         }}
                         tooltip="Open chat"
+                        active={showChat}
                         badge={newMessages > 0 ? newMessages : null}
                     />
 
-                    <div className="w-px h-8 bg-white/20 mx-2"></div>
+                    <div className="w-px h-8 bg-white/20 mx-1 sm:mx-2"></div>
 
                     <ControlButton
                         icon={CallEndIcon}
                         onClick={handleEndCall}
-                        tooltip="End call"
+                        tooltip="Leave call"
                         variant="danger"
                     />
                 </div>
@@ -551,6 +715,119 @@ export default function VideoMeetComponent() {
                 currentUsername={username}
                 newMessagesCount={newMessages}
             />
+
+            {/* Participants Panel - Google Meet Style */}
+            <AnimatePresence>
+                {showParticipants && (
+                    <motion.div
+                        className="fixed inset-y-0 right-0 w-full sm:w-96 bg-black/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-50 flex flex-col"
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                    >
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/40">
+                            <h2 className="font-semibold text-lg">People ({videos.length + 1})</h2>
+                            <button
+                                onClick={() => setShowParticipants(false)}
+                                className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
+                            >
+                                <CloseIcon />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                                    {username ? username[0].toUpperCase() : 'Y'}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-medium text-white">{username || 'You'}</div>
+                                    <div className="text-xs text-gray-400">You</div>
+                                </div>
+                                <span className="text-xs text-green-400">●</span>
+                            </div>
+                            {videos.map((video, index) => (
+                                <div key={video.socketId} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                                        {String.fromCharCode(65 + index)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-white">Participant {index + 1}</div>
+                                        <div className="text-xs text-gray-400">Connected</div>
+                                    </div>
+                                    {raisedHands[video.socketId] && (
+                                        <span className="text-xl animate-bounce">✋</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Meeting Info Modal */}
+            <AnimatePresence>
+                {showMeetingInfo && (
+                        <motion.div
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 safe-area-inset"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowMeetingInfo(false)}
+                        >
+                            <motion.div
+                                className="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-4 sm:mb-6">
+                                <h2 className="text-xl sm:text-2xl font-bold">Meeting Information</h2>
+                                <button
+                                    onClick={() => setShowMeetingInfo(false)}
+                                    className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white"
+                                >
+                                    <CloseIcon />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Meeting Code</label>
+                                    <div className="mt-1 font-mono text-lg font-bold text-white">{meetingId}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Duration</label>
+                                    <div className="mt-1 text-lg font-semibold text-white">{formatDuration(callStartTime)}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Participants</label>
+                                    <div className="mt-1 text-lg font-semibold text-white">{videos.length + 1} person{videos.length !== 0 ? 's' : ''}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Meeting Link</label>
+                                    <div className="mt-2 flex items-center gap-2 bg-white/5 rounded-xl p-3">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={`${window.location.origin}/${meetingId}`}
+                                            className="flex-1 bg-transparent text-sm text-white font-mono"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`${window.location.origin}/${meetingId}`);
+                                            }}
+                                            className="p-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 transition-colors"
+                                        >
+                                            <ContentCopyIcon fontSize="small" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

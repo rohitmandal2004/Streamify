@@ -7,7 +7,8 @@ const ControlButton = ({
   tooltip,
   variant = 'default',
   active = false,
-  badge = null
+  badge = null,
+  disabled = false
 }) => {
 
   const getColors = () => {
@@ -15,19 +16,21 @@ const ControlButton = ({
       return 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30';
     }
     if (active) {
-      return 'bg-primary hover:bg-blue-600 text-white shadow-lg shadow-primary/30';
+      return 'bg-white/20 hover:bg-white/30 text-white';
     }
-    return 'bg-surface hover:bg-white/10 text-gray-300 hover:text-white border border-white/5';
+    return 'bg-white/10 hover:bg-white/20 text-white';
   };
 
   return (
     <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      onClick={onClick}
+      whileHover={!disabled ? { scale: 1.1 } : {}}
+      whileTap={!disabled ? { scale: 0.9 } : {}}
+      onClick={disabled ? undefined : onClick}
       title={tooltip}
+      disabled={disabled}
       className={`
-        relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200
+        relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 touch-manipulation
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${getColors()}
       `}
     >
@@ -42,6 +45,7 @@ const ControlButton = ({
 };
 
 export default ControlButton;
+
 
 
 

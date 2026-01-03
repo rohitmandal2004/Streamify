@@ -79,6 +79,30 @@ export const connectToSocket = (server) => {
 
         })
 
+        socket.on("raise-hand", (username) => {
+            console.log("Raise hand received from:", socket.id, "username:", username);
+            
+            const [matchingRoom, found] = Object.entries(connections)
+                .reduce(([room, isFound], [roomKey, roomValue]) => {
+                    if (!isFound && roomValue.includes(socket.id)) {
+                        return [roomKey, true];
+                    }
+                    return [room, isFound];
+                }, ['', false]);
+
+            if (found === true) {
+                console.log("Broadcasting raise-hand to room:", matchingRoom, "participants:", connections[matchingRoom]);
+                connections[matchingRoom].forEach((elem) => {
+                    if (elem !== socket.id) {
+                        console.log("Sending raise-hand to:", elem);
+                        io.to(elem).emit("raise-hand", socket.id, username)
+                    }
+                })
+            } else {
+                console.log("Room not found for socket:", socket.id);
+            }
+        })
+
         socket.on("disconnect", () => {
 
             var diffTime = Math.abs(timeOnline[socket.id] - new Date())

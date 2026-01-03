@@ -18,10 +18,10 @@ const Input = ({
     <div className={`flex flex-col gap-1 w-full ${className}`}>
       <div
         className={`
-          flex items-center gap-3 px-4 py-3 bg-white/5 border rounded-xl transition-all duration-200
-          ${focused ? 'border-primary ring-1 ring-primary/50' : 'border-white/10 hover:border-white/20'}
-          ${error ? 'border-red-500' : ''}
-          ${success ? 'border-green-500' : ''}
+          flex items-center gap-3 px-4 py-3 bg-white/5 border rounded-xl transition-all duration-300
+          ${focused ? 'border-indigo-500 ring-2 ring-indigo-500/30 shadow-lg shadow-indigo-500/20' : 'border-white/10 hover:border-white/20'}
+          ${error ? 'border-red-500 ring-2 ring-red-500/30' : ''}
+          ${success ? 'border-green-500 ring-2 ring-green-500/30' : ''}
         `}
       >
         {Icon && (

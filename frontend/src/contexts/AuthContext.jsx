@@ -84,9 +84,29 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const handleGoogleAuth = async (googleData) => {
+        try {
+            const request = await client.post("/google-auth", {
+                name: googleData.name,
+                email: googleData.email,
+                profileImage: googleData.picture,
+                googleId: googleData.sub
+            });
+
+            if (request.status === httpStatus.OK || request.status === httpStatus.CREATED) {
+                localStorage.setItem("token", request.data.token);
+                setUserData(request.data.user);
+                router("/home");
+                return request.data;
+            }
+        } catch (err) {
+            throw err;
+        }
+    }
+
 
     const data = {
-        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin
+        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleGoogleAuth
     }
 
     return (
