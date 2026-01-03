@@ -24,6 +24,13 @@ import Button from '../components/Button';
 import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import MoreVertIcon from '@mui/icons-material/MoreVert'; // 3 dots
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import OptionsDrawer from '../components/OptionsDrawer';
+import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import server from '../environment';
 const server_url = server;
@@ -38,6 +45,7 @@ const peerConfigConnections = {
 
 export default function VideoMeetComponent() {
     const { url: meetingId } = useParams();
+    const navigate = useNavigate();
     var socketRef = useRef();
     let socketIdRef = useRef();
     let localVideoref = useRef();
@@ -58,6 +66,7 @@ export default function VideoMeetComponent() {
     let [videos, setVideos] = useState([]);
     let [raisedHands, setRaisedHands] = useState({});
     let [showParticipants, setShowParticipants] = useState(false);
+    let [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
     let [showMeetingInfo, setShowMeetingInfo] = useState(false);
     let [callStartTime] = useState(Date.now());
     let [participants, setParticipants] = useState([]);
@@ -647,16 +656,35 @@ export default function VideoMeetComponent() {
     };
 
     return (
-        <div className="h-dvh w-screen bg-black text-white overflow-hidden relative">
-            {/* Main Video Feed - Google Meet Style */}
+        <div className="h-dvh w-screen bg-[#202124] text-white overflow-hidden relative font-sans">
+            {/* Top Bar - Mobile Style */}
+            <div className="absolute top-0 left-0 right-0 z-50 p-4 safe-area-inset-top flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
+                <button onClick={() => window.location.href = '/'} className="p-2 -ml-2 text-white/90 pointer-events-auto">
+                    <ArrowBackIcon />
+                </button>
+
+                <div className="flex items-center gap-2 pointer-events-auto">
+                    <div className="bg-[#202124]/80 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/10 flex items-center gap-2 cursor-pointer" onClick={() => setShowMeetingInfo(true)}>
+                        <span>{meetingId.substring(0, 3)}-{meetingId.substring(3, 7)}...</span>
+                        <span className="w-px h-3 bg-white/20"></span>
+                        <span className="text-xs text-white/60">{formatDuration(callStartTime)}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1 -mr-2 pointer-events-auto">
+                    <button className="p-2 text-white/90">
+                        <VolumeUpIcon />
+                    </button>
+                    <button onClick={switchCamera} className="p-2 text-white/90">
+                        <CameraswitchIcon />
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Video Feed */}
             <div className="absolute inset-0 flex items-center justify-center">
                 {mainVideo ? (
-                    <motion.div
-                        className="relative w-full h-full bg-black"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                    >
+                    <div className="relative w-full h-full bg-[#202124]">
                         <video
                             data-socket={mainVideo.socketId}
                             ref={ref => {
@@ -666,38 +694,32 @@ export default function VideoMeetComponent() {
                             }}
                             autoPlay
                             playsInline
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-cover"
                         />
-
-                        {/* Name Label - Bottom Left */}
-                        <div className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-md flex items-center gap-2 z-10">
-                            <span className="text-sm sm:text-base font-medium text-white">
+                        {/* Name Label - Floating Pill */}
+                        <div className="absolute bottom-32 left-4 bg-black/60 px-3 py-1 rounded-full backdrop-blur-md flex items-center gap-2 z-10">
+                            <span className="text-sm font-medium text-white">
                                 {mainVideo.username || participantNames[mainVideo.socketId] || 'Participant'}
                             </span>
                             {raisedHands[mainVideo.socketId] && (
-                                <motion.span
-                                    className="text-yellow-400 text-lg"
-                                    animate={{ rotate: [0, 14, -8, 14, -8, 0] }}
-                                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
-                                >
-                                    ✋
-                                </motion.span>
+                                <span className="text-lg">✋</span>
                             )}
                         </div>
-
-                    </motion.div>
+                    </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
-                        <div className="w-32 h-32 rounded-full bg-surface/20 animate-pulse flex items-center justify-center">
-                            <PersonIcon style={{ fontSize: 64, opacity: 0.3 }} />
+                        <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-4xl text-blue-600 font-medium">
+                                {username ? username[0].toUpperCase() : 'Y'}
+                            </span>
                         </div>
-                        <p className="text-xl sm:text-2xl font-medium">Waiting for others to join...</p>
-                        <p className="text-sm sm:text-base">Share the meeting link to invite people</p>
+                        <p className="text-lg font-google-sans">Waiting for others...</p>
+                        <p className="text-sm text-gray-500">Share this code: {meetingId}</p>
                     </div>
                 )}
             </div>
 
-            {/* Self Video - Fixed Bottom Right */}
+            {/* Self Video - Adjusted for new layout */}
             {video || audio ? (
                 <SelfVideo
                     videoRef={localVideoref}
@@ -707,138 +729,74 @@ export default function VideoMeetComponent() {
                 />
             ) : null}
 
-            {/* Meeting Info - Bottom Left (Google Meet Style) */}
-            <div className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 z-30">
-                <div className="flex flex-col gap-1 text-white/80 text-xs sm:text-sm">
-                    <div className="flex items-center gap-2">
-                        <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span className="text-white/40">•</span>
-                        <span className="font-mono">{meetingId}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Right Side Panel - Participants, Chat, etc. */}
-            <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
-                <motion.button
-                    onClick={() => setShowMeetingInfo(!showMeetingInfo)}
-                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <InfoIcon style={{ fontSize: 20 }} />
-                </motion.button>
-
-                <motion.button
-                    onClick={() => setShowParticipants(!showParticipants)}
-                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm relative"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <PeopleIcon style={{ fontSize: 20 }} />
-                    {videos.length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-xs font-bold flex items-center justify-center">
-                            {videos.length + 1}
-                        </span>
-                    )}
-                </motion.button>
-
-                <motion.button
-                    onClick={() => {
-                        setShowChat(!showChat);
-                        setNewMessages(0);
-                    }}
-                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm relative"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <ChatIcon style={{ fontSize: 20 }} />
-                    {newMessages > 0 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-xs font-bold flex items-center justify-center">
-                            {newMessages}
-                        </span>
-                    )}
-                </motion.button>
-            </div>
-
-            {/* Control Bar - Google Meet Style - Mobile Optimized */}
+            {/* Bottom Control Bar - Simplified */}
             <motion.div
-                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 md:py-4 rounded-2xl sm:rounded-full shadow-2xl w-fit max-w-[95vw]"
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))' }}
+                className="fixed bottom-0 left-0 right-0 z-50 bg-[#202124] border-t border-white/10 px-4 py-4 safe-area-inset-bottom"
+                initial={{ y: 100 }}
+                animate={{ y: 0 }}
             >
-                <div className="flex items-center justify-center gap-1.5 sm:gap-2 md:gap-3 overflow-x-auto scrollbar-hide">
-                    <ControlButton
-                        icon={audio ? MicIcon : MicOffIcon}
-                        onClick={handleAudio}
-                        tooltip={audio ? 'Mute microphone' : 'Unmute microphone'}
-                        active={audio}
-                        variant={audio ? 'default' : 'danger'}
-                        className="flex-shrink-0"
-                    />
-                    <ControlButton
-                        icon={video ? VideocamIcon : VideocamOffIcon}
-                        onClick={handleVideo}
-                        tooltip={video ? 'Turn off camera' : 'Turn on camera'}
-                        active={video}
-                        variant={video ? 'default' : 'danger'}
-                        className="flex-shrink-0"
-                    />
-                    {screenAvailable && (
-                        <ControlButton
-                            icon={screen ? StopScreenShareIcon : ScreenShareIcon}
-                            onClick={handleScreen}
-                            tooltip={screen ? 'Stop sharing' : 'Share screen'}
-                            active={screen}
-                            className="flex-shrink-0"
-                        />
-                    )}
-                    <ControlButton
-                        icon={CameraswitchIcon}
-                        onClick={switchCamera}
-                        tooltip="Switch Camera"
-                        className="flex-shrink-0"
-                    />
-                    <ControlButton
-                        icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
-                        onClick={toggleFullScreen}
-                        tooltip={isFullScreen ? "Exit Full Screen" : "Full Screen"}
-                        active={isFullScreen}
-                        className="flex-shrink-0"
-                    />
-                    <ControlButton
-                        icon={PanToolIcon}
-                        onClick={handleRaiseHand}
-                        tooltip="Raise hand"
-                        active={raisedHands[socketIdRef.current] !== undefined || raisedHands['local'] !== undefined}
-                        className="flex-shrink-0"
-                    />
-                    <ControlButton
-                        icon={ChatIcon}
-                        onClick={() => {
-                            setShowChat(!showChat);
-                            setNewMessages(0);
-                        }}
-                        tooltip="Open chat"
-                        active={showChat}
-                        badge={newMessages > 0 ? newMessages : null}
-                        className="flex-shrink-0"
-                    />
-                    <div className="w-px h-6 sm:h-8 bg-white/20 mx-1 sm:mx-2 flex-shrink-0"></div>
-
+                <div className="flex items-center justify-between max-w-md mx-auto">
                     <ControlButton
                         icon={CallEndIcon}
                         onClick={handleEndCall}
-                        tooltip="Leave call"
                         variant="danger"
-                        className="flex-shrink-0"
+                        className="!bg-red-600 !hover:bg-red-700 !w-12 !h-12 !rounded-full"
+                    />
+
+                    <ControlButton
+                        icon={video ? VideocamIcon : VideocamOffIcon}
+                        onClick={handleVideo}
+                        active={video}
+                        className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${!video ? '!bg-white !text-black' : '!text-white'}`}
+                    />
+
+                    <ControlButton
+                        icon={audio ? MicIcon : MicOffIcon}
+                        onClick={handleAudio}
+                        active={audio}
+                        className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${!audio ? '!bg-white !text-black' : '!text-white'}`}
+                    />
+
+                    <ControlButton
+                        icon={EmojiEmotionsIcon} // Reaction placeholder
+                        onClick={() => { }} // TODO: Add reaction menu
+                        className="!bg-[#3C4043] !text-white !w-12 !h-12 !rounded-full"
+                    />
+
+                    <ControlButton
+                        icon={MoreVertIcon}
+                        onClick={() => setShowOptionsDrawer(true)}
+                        className="!bg-[#3C4043] !text-white !w-12 !h-12 !rounded-full"
                     />
                 </div>
             </motion.div>
 
-            {/* Chat Panel */}
+            {/* Options Drawer */}
+            <OptionsDrawer
+                isOpen={showOptionsDrawer}
+                onClose={() => setShowOptionsDrawer(false)}
+                onRaiseHand={() => {
+                    handleRaiseHand();
+                    setShowOptionsDrawer(false);
+                }}
+                isHandRaised={raisedHands[socketIdRef.current] !== undefined || raisedHands['local'] !== undefined}
+                onChat={() => {
+                    setShowChat(true);
+                    setShowOptionsDrawer(false);
+                }}
+                onScreenShare={() => {
+                    handleScreen();
+                    setShowOptionsDrawer(false);
+                }}
+                isScreenSharing={screen}
+                onFullScreen={() => {
+                    toggleFullScreen();
+                    setShowOptionsDrawer(false);
+                }}
+                isFullScreen={isFullScreen}
+            />
+
+            {/* Chat Panel - Full screen on mobile usually, keeping side panel for now but can be improved */}
             <ChatPanel
                 isOpen={showChat}
                 onClose={() => setShowChat(false)}
@@ -847,58 +805,6 @@ export default function VideoMeetComponent() {
                 currentUsername={username}
                 newMessagesCount={newMessages}
             />
-
-            {/* Participants Panel - Google Meet Style */}
-            <AnimatePresence>
-                {showParticipants && (
-                    <motion.div
-                        className="fixed inset-y-0 right-0 w-full sm:w-96 bg-black/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-50 flex flex-col"
-                        initial={{ x: '100%' }}
-                        animate={{ x: 0 }}
-                        exit={{ x: '100%' }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                    >
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/40">
-                            <h2 className="font-semibold text-lg">People ({videos.length + 1})</h2>
-                            <button
-                                onClick={() => setShowParticipants(false)}
-                                className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
-                            >
-                                <CloseIcon />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                                    {username ? username[0].toUpperCase() : 'Y'}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="font-medium text-white">{username || 'You'}</div>
-                                    <div className="text-xs text-gray-400">You</div>
-                                </div>
-                                <span className="text-xs text-green-400">●</span>
-                            </div>
-                            {videos.map((video, index) => {
-                                const participantName = participantNames[video.socketId] || `Participant ${index + 1}`;
-                                return (
-                                    <div key={video.socketId} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                                            {participantName[0]?.toUpperCase() || String.fromCharCode(65 + index)}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="font-medium text-white">{participantName}</div>
-                                            <div className="text-xs text-gray-400">Connected</div>
-                                        </div>
-                                        {raisedHands[video.socketId] && (
-                                            <span className="text-xl animate-bounce">✋</span>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             {/* Meeting Info Modal */}
             <AnimatePresence>
@@ -911,14 +817,14 @@ export default function VideoMeetComponent() {
                         onClick={() => setShowMeetingInfo(false)}
                     >
                         <motion.div
-                            className="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl"
+                            className="bg-[#202124] border border-white/10 rounded-2xl p-5 max-w-sm w-full shadow-2xl"
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="flex items-center justify-between mb-4 sm:mb-6">
-                                <h2 className="text-xl sm:text-2xl font-bold">Meeting Information</h2>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold">Meeting details</h2>
                                 <button
                                     onClick={() => setShowMeetingInfo(false)}
                                     className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white"
@@ -928,35 +834,17 @@ export default function VideoMeetComponent() {
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Meeting Code</label>
-                                    <div className="mt-1 font-mono text-lg font-bold text-white">{meetingId}</div>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Duration</label>
-                                    <div className="mt-1 text-lg font-semibold text-white">{formatDuration(callStartTime)}</div>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Participants</label>
-                                    <div className="mt-1 text-lg font-semibold text-white">{videos.length + 1} person{videos.length !== 0 ? 's' : ''}</div>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Meeting Link</label>
-                                    <div className="mt-2 flex items-center gap-2 bg-white/5 rounded-xl p-3">
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={`${window.location.origin}/${meetingId}`}
-                                            className="flex-1 bg-transparent text-sm text-white font-mono"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(`${window.location.origin}/${meetingId}`);
-                                            }}
-                                            className="p-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 transition-colors"
-                                        >
-                                            <ContentCopyIcon fontSize="small" />
-                                        </button>
-                                    </div>
+                                    <label className="text-xs text-gray-400 uppercase tracking-wider">Joining Info</label>
+                                    <div className="mt-1 font-mono text-lg font-bold text-white">{window.location.href}</div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(window.location.href);
+                                        }}
+                                        className="mt-2 flex items-center gap-2 text-blue-400 font-medium text-sm"
+                                    >
+                                        <ContentCopyIcon fontSize="small" />
+                                        Copy joining info
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
