@@ -9,9 +9,17 @@ import LockIcon from '@mui/icons-material/Lock';
 import GoogleIcon from '@mui/icons-material/Google';
 import Logo from '../components/Logo';
 import Footer from '../components/Footer';
+import FloatingCubes from '../components/3d/FloatingCubes';
 
 export default function Authentication() {
   const [username, setUsername] = React.useState('');
+  // ... (omitting unchanged lines for brevity in prompt construction, but tool will handle correct context)
+  // Wait, I need to be careful with replace_file_content context.
+  // I will split this into two replacements if needed, or one big one if contiguous.
+  // First replacement: Import.
+  // Second replacement: JSX.
+  // Actually, I can allow multiple edits or just do two calls. I'll do two calls to be safe and precise.
+
   const [password, setPassword] = React.useState('');
   const [name, setName] = React.useState('');
   const [error, setError] = React.useState('');
@@ -101,7 +109,7 @@ export default function Authentication() {
   const handleGoogleCallback = async (response) => {
     setGoogleLoading(true);
     setError('');
-    
+
     try {
       // Decode the JWT token to get user info
       const base64Url = response.credential.split('.')[1];
@@ -109,16 +117,16 @@ export default function Authentication() {
       const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join(''));
-      
+
       const googleData = JSON.parse(jsonPayload);
-      
+
       await handleGoogleAuth({
         name: googleData.name,
         email: googleData.email,
         picture: googleData.picture,
         sub: googleData.sub
       });
-      
+
       setMessage('Successfully signed in with Google!');
       setOpen(true);
     } catch (err) {
@@ -132,7 +140,7 @@ export default function Authentication() {
 
   const handleGoogleSignIn = () => {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    
+
     if (!clientId || clientId === 'your_google_client_id_here') {
       setError('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID in your .env file.');
       setOpen(true);
@@ -146,7 +154,7 @@ export default function Authentication() {
         client_id: clientId,
         callback: handleGoogleCallback,
       });
-      
+
       // Trigger the sign-in popup
       window.google.accounts.id.prompt();
     } else {
@@ -158,10 +166,7 @@ export default function Authentication() {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
       {/* Dynamic Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-20%] w-[800px] h-[800px] bg-indigo-500/20 rounded-full blur-[120px] animate-blob" />
-        <div className="absolute bottom-[-20%] right-[-20%] w-[800px] h-[800px] bg-purple-500/10 rounded-full blur-[120px] animate-blob animation-delay-2000" />
-      </div>
+      <FloatingCubes count={15} />
 
       {/* Logo Above Form - Mobile Optimized */}
       <div className="flex justify-center pt-6 sm:pt-8 pb-3 sm:pb-4 relative z-20 px-4">
@@ -178,185 +183,185 @@ export default function Authentication() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
-        {/* Left Panel - Illustration */}
-        <div className="hidden md:flex flex-col justify-center p-12 relative bg-gradient-to-br from-primary/20 to-purple-600/20">
-          <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:30px_30px]" />
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="relative z-10"
-          >
-            <h2 className="text-4xl font-bold mb-4 font-sans">
-              Welcome <span className="text-gradient">Back!</span>
-            </h2>
-            <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-              Connect with your loved ones, team, and friends through seamless, high-quality video calls.
-            </p>
-
-            <div className="space-y-4">
-              {[
-                { text: "HD Video Quality", color: "bg-blue-500" },
-                { text: "Real-time Chat", color: "bg-purple-500" },
-                { text: "Secure & Private", color: "bg-green-500" }
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + i * 0.1 }}
-                  className="flex items-center gap-3 text-gray-200"
-                >
-                  <div className={`w-8 h-8 rounded-full ${item.color}/20 flex items-center justify-center`}>
-                    <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                  </div>
-                  <span className="font-medium">{item.text}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Right Panel - Form - Mobile Optimized */}
-        <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center bg-black/20">
-          <div className="max-w-sm mx-auto w-full">
-            <div className="text-center mb-6 sm:mb-8">
-              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-                {formState === 0 ? 'Sign In' : 'Create Account'}
-              </h3>
-              <p className="text-gray-400 text-xs sm:text-sm">
-                {formState === 0 ? 'Welcome back to Streamify' : 'Join the Streamify community'}
-              </p>
-            </div>
-
-            {/* Google Sign In Button */}
+          {/* Left Panel - Illustration */}
+          <div className="hidden md:flex flex-col justify-center p-12 relative bg-gradient-to-br from-primary/20 to-purple-600/20">
+            <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:30px_30px]" />
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mb-6"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="relative z-10"
             >
-              <Button
-                variant="secondary"
-                size="lg"
-                fullWidth
-                onClick={handleGoogleSignIn}
-                disabled={googleLoading}
-                className="border-white/20 hover:border-white/30 hover:bg-white/10"
-              >
-                {googleLoading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <GoogleIcon className="text-lg" />
-                    Continue with Google
-                  </span>
-                )}
-              </Button>
-            </motion.div>
+              <h2 className="text-4xl font-bold mb-4 font-sans">
+                Welcome <span className="text-gradient">Back!</span>
+              </h2>
+              <p className="text-lg text-gray-300 mb-8 leading-relaxed">
+                Connect with your loved ones, team, and friends through seamless, high-quality video calls.
+              </p>
 
-            {/* Divider */}
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-black/20 text-gray-400">or</span>
-              </div>
-            </div>
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={formState}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-4"
-              >
-                {formState === 1 && (
-                  <Input
-                    label="Full Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    icon={PersonIcon}
-                    error={fieldErrors.name}
-                    autoFocus
-                  />
-                )}
-
-                <Input
-                  label="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  icon={PersonIcon}
-                  error={fieldErrors.username}
-                  autoFocus={formState === 0}
-                />
-
-                <Input
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  icon={LockIcon}
-                  error={fieldErrors.password}
-                  onKeyPress={handleKeyPress}
-                />
-
-                {error && !error.includes('Google OAuth') && (
+              <div className="space-y-4">
+                {[
+                  { text: "HD Video Quality", color: "bg-blue-500" },
+                  { text: "Real-time Chat", color: "bg-purple-500" },
+                  { text: "Secure & Private", color: "bg-green-500" }
+                ].map((item, i) => (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center"
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + i * 0.1 }}
+                    className="flex items-center gap-3 text-gray-200"
                   >
-                    {error}
+                    <div className={`w-8 h-8 rounded-full ${item.color}/20 flex items-center justify-center`}>
+                      <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                    </div>
+                    <span className="font-medium">{item.text}</span>
                   </motion.div>
-                )}
-
-                <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    onClick={handleAuth}
-                    disabled={loading}
-                    className="shadow-primary/20"
-                  >
-                    {loading ? (
-                      <span className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {formState === 0 ? 'Signing in...' : 'Creating account...'}
-                      </span>
-                    ) : (
-                      formState === 0 ? 'Sign In' : 'Create Account'
-                    )}
-                  </Button>
-                </div>
-
-                <div className="mt-6 text-center">
-                  <p className="text-gray-400 text-sm">
-                    {formState === 0 ? "Don't have an account? " : "Already have an account? "}
-                    <button
-                      onClick={() => {
-                        setFormState(formState === 0 ? 1 : 0);
-                        setError('');
-                        setFieldErrors({});
-                      }}
-                      className="text-primary hover:text-blue-400 font-semibold transition-colors focus:outline-none"
-                    >
-                      {formState === 0 ? 'Sign Up' : 'Sign In'}
-                    </button>
-                  </p>
-                </div>
-              </motion.div>
-            </AnimatePresence>
+                ))}
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </motion.div>
+
+          {/* Right Panel - Form - Mobile Optimized */}
+          <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center bg-black/20">
+            <div className="max-w-sm mx-auto w-full">
+              <div className="text-center mb-6 sm:mb-8">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+                  {formState === 0 ? 'Sign In' : 'Create Account'}
+                </h3>
+                <p className="text-gray-400 text-xs sm:text-sm">
+                  {formState === 0 ? 'Welcome back to Streamify' : 'Join the Streamify community'}
+                </p>
+              </div>
+
+              {/* Google Sign In Button */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mb-6"
+              >
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  fullWidth
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className="border-white/20 hover:border-white/30 hover:bg-white/10"
+                >
+                  {googleLoading ? (
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <GoogleIcon className="text-lg" />
+                      Continue with Google
+                    </span>
+                  )}
+                </Button>
+              </motion.div>
+
+              {/* Divider */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-black/20 text-gray-400">or</span>
+                </div>
+              </div>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={formState}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
+                >
+                  {formState === 1 && (
+                    <Input
+                      label="Full Name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      icon={PersonIcon}
+                      error={fieldErrors.name}
+                      autoFocus
+                    />
+                  )}
+
+                  <Input
+                    label="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    icon={PersonIcon}
+                    error={fieldErrors.username}
+                    autoFocus={formState === 0}
+                  />
+
+                  <Input
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    icon={LockIcon}
+                    error={fieldErrors.password}
+                    onKeyPress={handleKeyPress}
+                  />
+
+                  {error && !error.includes('Google OAuth') && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+
+                  <div className="pt-2">
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      onClick={handleAuth}
+                      disabled={loading}
+                      className="shadow-primary/20"
+                    >
+                      {loading ? (
+                        <span className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          {formState === 0 ? 'Signing in...' : 'Creating account...'}
+                        </span>
+                      ) : (
+                        formState === 0 ? 'Sign In' : 'Create Account'
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <p className="text-gray-400 text-sm">
+                      {formState === 0 ? "Don't have an account? " : "Already have an account? "}
+                      <button
+                        onClick={() => {
+                          setFormState(formState === 0 ? 1 : 0);
+                          setError('');
+                          setFieldErrors({});
+                        }}
+                        className="text-primary hover:text-blue-400 font-semibold transition-colors focus:outline-none"
+                      >
+                        {formState === 0 ? 'Sign Up' : 'Sign In'}
+                      </button>
+                    </p>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
       </div>
 
       {/* Footer */}
@@ -369,7 +374,7 @@ export default function Authentication() {
         message={message}
         type="success"
       />
-      
+
       {error && (
         <Toast
           open={!!error}

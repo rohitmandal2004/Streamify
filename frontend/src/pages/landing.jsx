@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import LockIcon from '@mui/icons-material/Lock';
 import SpeedIcon from '@mui/icons-material/Speed';
 import HighQualityIcon from '@mui/icons-material/HighQuality';
+import FloatingCubes from '../components/3d/FloatingCubes';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ export default function LandingPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] mix-blend-screen" />
       </div>
+
+      {/* 3D Floating Cubes Background */}
+      <FloatingCubes />
 
       {/* Navbar */}
       <motion.nav
@@ -83,9 +87,9 @@ export default function LandingPage() {
             <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold leading-tight mb-4 sm:mb-6 relative px-2">
               <span className="absolute -inset-2 sm:-inset-4 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-3xl opacity-50 animate-pulse"></span>
               <span className="relative">Connect with <br className="hidden sm:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-                Anyone, Anywhere
-              </span></span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
+                  Anyone, Anywhere
+                </span></span>
             </h1>
 
             <p className="text-sm sm:text-lg text-gray-400 mb-6 sm:mb-8 max-w-lg leading-relaxed px-2">
@@ -148,52 +152,20 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 1, delay: 0.2 }}
-            className="relative"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative h-[200px] lg:h-[400px] w-full flex items-center justify-center z-20 pointer-events-none"
           >
-            <motion.div style={{ y: y1 }} className="absolute -top-12 -right-12 w-24 h-24 bg-gradient-to-br from-indigo-500/40 to-purple-500/40 rounded-2xl blur-2xl animate-blob" />
-            <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl shadow-indigo-500/20 bg-surface/50 backdrop-blur-xl aspect-video group">
-              {/* Glassmorphism overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10" />
-              
-              {/* Mockup UI of a video call */}
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/10 transition-all backdrop-blur-sm">
-                <motion.div 
-                  className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center cursor-pointer border border-white/20 shadow-lg"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className="w-0 h-0 border-t-10 border-t-transparent border-l-16 border-l-white border-b-10 border-b-transparent ml-1"></div>
-                </motion.div>
-              </div>
-              
-              {/* Floating glass preview elements */}
-              <div className="absolute top-4 left-4 right-4 flex gap-2">
-                <div className="flex-1 h-20 rounded-xl bg-white/10 backdrop-blur-md border border-white/20"></div>
-                <div className="flex-1 h-20 rounded-xl bg-white/10 backdrop-blur-md border border-white/20"></div>
-                <div className="flex-1 h-20 rounded-xl bg-white/10 backdrop-blur-md border border-white/20"></div>
-              </div>
-
-              {/* Floating Elements */}
-              <motion.div
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-indigo-500/30 flex items-center gap-3 shadow-lg shadow-indigo-500/20"
-              >
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-lg shadow-green-400/50"></div>
-                <span className="text-xs font-mono text-green-400">Encrypted Connection</span>
-              </motion.div>
-            </div>
+            {/* Empty container to maintain layout structure, or replaced by FloatingCubes */}
           </motion.div>
 
-        </div>
-      </div>
+
+        </div >
+      </div >
 
       {/* Features Grid - Mobile Optimized */}
-      <div className="px-4 sm:px-6 py-12 sm:py-20 bg-surface/30 relative">
+      < div className="px-4 sm:px-6 py-12 sm:py-20 bg-surface/30 relative" >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Why Choose Streamify?</h2>
@@ -223,10 +195,10 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Footer */}
-      <Footer />
-    </div>
+      < Footer />
+    </div >
   );
 }

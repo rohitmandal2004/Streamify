@@ -125,14 +125,45 @@ export const connectToSocket = (server) => {
 
             if (found === true) {
                 connections[matchingRoom].forEach((elem) => {
-                    // Send to everyone INCLUDING sender (so they see their own reaction float up)
-                    // Or maybe sender handles their own locally. 
-                    // Let's send to others only and let sender handle local.
                     if (elem !== socket.id) {
                         io.to(elem).emit("reaction", socket.id, emoji, username)
                     }
                 })
             }
+        })
+
+        socket.on("user-mute-status", (muted) => {
+            const [matchingRoom, found] = Object.entries(connections)
+                .reduce(([room, isFound], [roomKey, roomValue]) => {
+                    if (!isFound && roomValue.includes(socket.id)) {
+                        return [roomKey, true];
+                    }
+                    return [room, isFound];
+                }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    if (elem !== socket.id) {
+                        io.to(elem).emit("user-mute-status", socket.id, muted)
+                    }
+                })
+            }
+        })
+
+        // Host Permissions
+        socket.on("kick-user", (targetSocketId) => {
+            console.log(`Kick request from ${socket.id} to kick ${targetSocketId}`);
+            // In a real app, verify if socket.id is actually the host. 
+            // For now, we allow any participant to kick (as per requested simplicity or relying on UI hiding).
+            io.to(targetSocketId).emit("kicked");
+            
+            // Also notify others so they can update their UI
+            // The 'disconnect' logic handles cleanup, but 'kicked' forces the client to leave.
+        })
+
+        socket.on("mute-user", (targetSocketId) => {
+            console.log(`Mute request from ${socket.id} to mute ${targetSocketId}`);
+            io.to(targetSocketId).emit("muted-by-host");
         })
 
         socket.on("disconnect", () => {

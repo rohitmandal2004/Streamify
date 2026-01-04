@@ -1,15 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import logoImg from '../assets/logo.png';
 
-const Logo = ({ 
-  size = 'md', 
-  showText = true, 
+const Logo = ({
+  size = 'md',
+  showText = true,
   className = '',
-  clickable = true 
+  clickable = true
 }) => {
   const navigate = useNavigate();
-  
+
   const sizes = {
     sm: { icon: 'w-6 h-6', text: 'text-lg' },
     md: { icon: 'w-8 h-8', text: 'text-xl' },
@@ -32,11 +33,12 @@ const Logo = ({
       whileHover={clickable ? { scale: 1.05 } : {}}
       whileTap={clickable ? { scale: 0.95 } : {}}
     >
-      <div className={`${sizeConfig.icon} rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
-        <span className="relative font-bold text-white z-10" style={{ fontSize: size === 'sm' ? '0.875rem' : size === 'md' ? '1rem' : size === 'lg' ? '1.5rem' : '2rem' }}>
-          S
-        </span>
+      <div className={`${sizeConfig.icon} relative overflow-hidden rounded-xl`}>
+        <img
+          src={logoImg}
+          alt="Streamify Logo"
+          className="w-full h-full object-cover"
+        />
       </div>
       {showText && (
         <span className={`${sizeConfig.text} font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-purple-200`}>

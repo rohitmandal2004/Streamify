@@ -11,9 +11,12 @@ import KeyboardIcon from '@mui/icons-material/Keyboard';
 import AddIcon from '@mui/icons-material/Add';
 import Logo from '../components/Logo';
 import Footer from '../components/Footer';
+import FloatingCubes from '../components/3d/FloatingCubes';
 
 function HomeComponent() {
   const navigate = useNavigate();
+  // ... (omitting context, tool handles it)
+
   const [meetingCode, setMeetingCode] = useState('');
   const { userData, addToUserHistory } = useContext(AuthContext); // Assuming userData might be available
 
@@ -42,11 +45,8 @@ function HomeComponent() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
-      {/* Background Ambience */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] animate-pulse-slow" />
-        <div className="absolute bottom-[-10%] right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] animate-pulse-slow" style={{ animationDelay: '1s' }} />
-      </div>
+      {/* Floating 3D Background */}
+      <FloatingCubes count={20} />
 
       {/* Navbar - Mobile Optimized */}
       <motion.nav
@@ -63,9 +63,9 @@ function HomeComponent() {
       </motion.nav>
 
       {/* Main Content - Mobile Optimized */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 z-10 w-full max-w-7xl mx-auto">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 z-10 w-full max-w-7xl mx-auto pointer-events-none">
         <motion.div
-          className="text-center max-w-2xl mb-8 sm:mb-16"
+          className="text-center max-w-2xl mb-8 sm:mb-16 pointer-events-auto"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -76,16 +76,16 @@ function HomeComponent() {
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight relative px-2">
             <span className="absolute -inset-2 sm:-inset-4 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-3xl opacity-50 animate-pulse"></span>
             <span className="relative">Premium Video Meetings <br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-              for Everyone
-            </span></span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
+                for Everyone
+              </span></span>
           </h1>
           <p className="text-sm sm:text-lg text-gray-400 leading-relaxed px-2">
             Connect, collaborate, and celebrate from anywhere with crystal clear video and audio.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full max-w-4xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full max-w-4xl pointer-events-auto">
           {/* Join Meeting Card */}
           <motion.div
             className="bg-surface/50 backdrop-blur-xl p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-glow hover:shadow-indigo-500/20 group"
