@@ -99,7 +99,7 @@ Visit `http://localhost:3000` to view the application.
 
 ## 📸 Screenshots
 
-| Landing Page | Video Meeting |
+
 |:---:|:---:|
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1a79c640-4a7e-4db6-9325-de5710b93620" />
 
