@@ -104,11 +104,10 @@ Visit `http://localhost:3000` to view the application.
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1a79c640-4a7e-4db6-9325-de5710b93620" />
 
 
-| Whiteboard | Polls |
-|:---:|:---:|
-| <img src="./screenshots/whiteboard.png" alt="Whiteboard" width="400" /> | <img src="./screenshots/polls.png" alt="Polls" width="400" /> |
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/3edc273d-f46e-4ae6-9447-5d1f746c8319" />
 
-*> Note: Replace the standard placeholder paths above with actual screenshots of your application for the best result!*
+
+
 
 ---
 
