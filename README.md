@@ -101,7 +101,8 @@ Visit `http://localhost:3000` to view the application.
 
 | Landing Page | Video Meeting |
 |:---:|:---:|
-| <img src="./screenshots/landing.png" alt="Landing Page" width="400" /> | <img src="./screenshots/meeting.png" alt="Meeting Room" width="400" /> |
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1a79c640-4a7e-4db6-9325-de5710b93620" />
+
 
 | Whiteboard | Polls |
 |:---:|:---:|
