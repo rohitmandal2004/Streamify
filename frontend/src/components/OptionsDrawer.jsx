@@ -32,7 +32,10 @@ const OptionsDrawer = ({
     onScreenShare,
     isScreenSharing,
     onFullScreen,
-    isFullScreen
+    isFullScreen,
+    waitingList = [],
+    isHost = false,
+    onAdmit
 }) => {
     return (
         <AnimatePresence>
@@ -112,6 +115,31 @@ const OptionsDrawer = ({
                                 onClick={() => { }}
                             />
                         </div>
+
+                        {/* Host: Waiting Room Section */}
+                        {isHost && waitingList && waitingList.length > 0 && (
+                            <div className="px-4 sm:px-6 mt-4 border-t border-white/10 pt-4">
+                                <h3 className="text-white font-semibold text-sm mb-3">Waiting Room ({waitingList.length})</h3>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                    {waitingList.map((user) => (
+                                        <div key={user.socketId} className="flex items-center justify-between bg-[#303030] p-3 rounded-xl">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                                    {user.username.charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="text-white text-sm font-medium">{user.username}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => onAdmit(user.socketId)}
+                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+                                            >
+                                                Admit
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 </>
             )}

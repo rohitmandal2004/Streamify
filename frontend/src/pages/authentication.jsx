@@ -29,6 +29,7 @@ export default function Authentication() {
   const [fieldErrors, setFieldErrors] = React.useState({});
   const [loading, setLoading] = React.useState(false);
   const [googleLoading, setGoogleLoading] = React.useState(false);
+  const tokenClient = React.useRef(null);
 
   const { handleRegister, handleLogin, handleGoogleAuth } = React.useContext(AuthContext);
 
@@ -90,13 +91,56 @@ export default function Authentication() {
     }
   };
 
-  // Google OAuth handler - Simplified approach
+  // Google OAuth handler - Token Client Model (Popup)
   React.useEffect(() => {
     // Load Google Identity Services script
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
+    script.onload = () => {
+      // Initialize Token Client
+      if (window.google) {
+        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+          callback: async (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              setGoogleLoading(true);
+              setError('');
+              
+              try {
+                // Fetch user info directly using access token
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                
+                if (!userInfoResponse.ok) {
+                  throw new Error('Failed to fetch user info');
+                }
+
+                const googleData = await userInfoResponse.json();
+
+                await handleGoogleAuth({
+                  name: googleData.name,
+                  email: googleData.email,
+                  picture: googleData.picture,
+                  sub: googleData.sub
+                });
+
+                setMessage('Successfully signed in with Google!');
+                setOpen(true);
+              } catch (err) {
+                console.error('Google auth error:', err);
+                setError('Failed to sign in with Google. Please try again.');
+              } finally {
+                setGoogleLoading(false);
+              }
+            }
+          },
+        });
+      }
+    };
     document.body.appendChild(script);
 
     return () => {
@@ -104,39 +148,7 @@ export default function Authentication() {
         document.body.removeChild(script);
       }
     };
-  }, []);
-
-  const handleGoogleCallback = async (response) => {
-    setGoogleLoading(true);
-    setError('');
-
-    try {
-      // Decode the JWT token to get user info
-      const base64Url = response.credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-
-      const googleData = JSON.parse(jsonPayload);
-
-      await handleGoogleAuth({
-        name: googleData.name,
-        email: googleData.email,
-        picture: googleData.picture,
-        sub: googleData.sub
-      });
-
-      setMessage('Successfully signed in with Google!');
-      setOpen(true);
-    } catch (err) {
-      console.error('Google auth error:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to sign in with Google';
-      setError(errorMessage);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
+  }, [handleGoogleAuth]);
 
   const handleGoogleSignIn = () => {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -144,22 +156,22 @@ export default function Authentication() {
     if (!clientId || clientId === 'your_google_client_id_here') {
       setError('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID in your .env file.');
       setOpen(true);
-      setMessage('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID in your .env file.');
       return;
     }
 
-    if (window.google && window.google.accounts) {
-      setError(''); // Clear any previous errors
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCallback,
-      });
-
-      // Trigger the sign-in popup
-      window.google.accounts.id.prompt();
+    if (tokenClient.current) {
+      // Trigger the pop-up
+      tokenClient.current.requestAccessToken();
     } else {
-      // Fallback: Show instructions
-      setError('Google Sign-In is loading. Please try again in a moment.');
+      // Try to re-initialize if it failed or wasn't ready
+       if (window.google && window.google.accounts) {
+          setError('Initializing Google Sign-In...');
+          // Re-init logic could go here but usually onload handles it.
+          // Just show a message to retry.
+          setError('Google Sign-In is correct loading. Please click again.');
+       } else {
+          setError('Google Sign-In script not loaded. Check your connection.');
+       }
     }
   };
 

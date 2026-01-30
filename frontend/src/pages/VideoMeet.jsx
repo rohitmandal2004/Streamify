@@ -13,7 +13,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+
 import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
 import BlockIcon from '@mui/icons-material/Block';
 
@@ -23,9 +23,11 @@ import ControlButton from '../components/ControlButton';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import OptionsDrawer from '../components/OptionsDrawer';
-import EmojiPicker from '../components/EmojiPicker';
-import EmojiBubble from '../components/EmojiBubble';
+
 import FloatingCubes from '../components/3d/FloatingCubes';
+import CallTimer from '../components/CallTimer';
+import { AuthContext } from '../contexts/AuthContext';
+import { useContext } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 import server from '../environment';
@@ -42,6 +44,7 @@ const peerConfigConnections = {
 export default function VideoMeetComponent() {
     const { url: meetingId } = useParams();
     const navigate = useNavigate();
+    const { addToUserHistory } = useContext(AuthContext);
 
     // Refs
     var socketRef = useRef();
@@ -73,14 +76,18 @@ export default function VideoMeetComponent() {
 
     // UI State
     let [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
-    let [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    let [reactions, setReactions] = useState([]);
+
     let [showMeetingInfo, setShowMeetingInfo] = useState(false);
     let [callStartTime] = useState(Date.now());
     let [isSocketConnected, setIsSocketConnected] = useState(false);
 
     // Menu State for Host Actions
     const [activeMenu, setActiveMenu] = useState(null); // socketId of user whose menu is open
+
+    // Waiting Room State
+    const [isWaiting, setIsWaiting] = useState(false);
+    const [isHost, setIsHost] = useState(false);
+    const [waitingList, setWaitingList] = useState([]);
 
     // --- Init & Permissions ---
     useEffect(() => {
@@ -237,6 +244,9 @@ export default function VideoMeetComponent() {
             setIsSocketConnected(true);
             setParticipantNames(prev => ({ ...prev, [socketRef.current.id]: username }));
 
+            // Add to history
+            addToUserHistory(meetingId);
+
             // Host Actions: Kicked
             socketRef.current.on('kicked', () => {
                 console.log("Received kicked event");
@@ -257,6 +267,27 @@ export default function VideoMeetComponent() {
                 alert("You have been muted by the host.");
             });
 
+            // Waiting Room Logic
+            socketRef.current.on('room-status', (status) => {
+                if (status === 'WAITING') {
+                    setIsWaiting(true);
+                } else if (status === 'JOINED') {
+                    setIsWaiting(false);
+                }
+            });
+
+            socketRef.current.on('host-status', (status) => {
+                setIsHost(status);
+            });
+
+            socketRef.current.on('waiting-list', (user) => {
+                setWaitingList(prev => [...prev, user]);
+            });
+
+            socketRef.current.on('waiting-list-update', (list) => {
+                setWaitingList(list);
+            });
+
             // Listeners
             socketRef.current.on('chat-message', addMessage)
 
@@ -275,14 +306,16 @@ export default function VideoMeetComponent() {
             });
         });
 
-        // Reactions
-        socketRef.current.on('reaction', (senderId, emoji) => {
-            const newReaction = { id: Date.now() + Math.random(), emoji, senderId };
-            setReactions(prev => [...prev, newReaction]);
-        });
+
 
         // User Left
         socketRef.current.on('user-left', (id) => {
+            // FIX: Explicitly close the connection to stop the video stream immediately on other clients
+            if (connections[id]) {
+                connections[id].close();
+                delete connections[id];
+            }
+
             setVideos((videos) => videos.filter((video) => video.socketId !== id))
             // Clean up map
             setParticipantNames(prev => {
@@ -533,11 +566,7 @@ export default function VideoMeetComponent() {
         }, 5000);
     }
 
-    let handleSendReaction = (emoji) => {
-        if (socketRef.current) socketRef.current.emit('reaction', emoji, username || 'Anonymous');
-        const newReaction = { id: Date.now() + Math.random(), emoji, senderId: 'local' };
-        setReactions(prev => [...prev, newReaction]);
-    }
+
 
     let handleSendMessage = (text) => {
         if (socketRef.current) socketRef.current.emit('chat-message', text, username)
@@ -560,6 +589,12 @@ export default function VideoMeetComponent() {
         socketRef.current.emit('mute-user', targetSocketId);
         setActiveMenu(null);
         alert("Mute command sent.");
+    }
+
+    const handleAdmitUser = (socketId) => {
+        if (socketRef.current) {
+            socketRef.current.emit('admit-user', socketId);
+        }
     }
 
 
@@ -586,6 +621,23 @@ export default function VideoMeetComponent() {
         );
     }
 
+    if (isWaiting) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden text-center text-white">
+                <FloatingCubes />
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="z-10 bg-surface/30 backdrop-blur-xl p-8 rounded-2xl border border-white/10 max-w-md w-full"
+                >
+                    <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                    <h2 className="text-2xl font-bold mb-2">Waiting for Host</h2>
+                    <p className="text-gray-300">The host will let you in shortly.</p>
+                </motion.div>
+            </div>
+        )
+    }
+
 
     // Grid Calculation
     const totalParticipants = videos.length + 1; // +1 for self
@@ -600,10 +652,21 @@ export default function VideoMeetComponent() {
             {/* Top Bar */}
             <div className="absolute top-0 left-0 right-0 z-50 p-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
                 <button onClick={() => window.location.href = '/'} className="p-2 -ml-2 text-white/90 pointer-events-auto"><ArrowBackIcon /></button>
-                <div className="bg-[#202124]/80 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/10 flex items-center gap-2 pointer-events-auto cursor-pointer" onClick={() => setShowMeetingInfo(true)}>
-                    <span>{meetingId}</span>
+                <div className="flex items-center gap-3">
+                    <div className="bg-[#202124]/80 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/10 flex items-center gap-2 pointer-events-auto cursor-pointer" onClick={() => setShowMeetingInfo(true)}>
+                        <span>{meetingId}</span>
+                    </div>
+                    <CallTimer startTime={callStartTime} />
                 </div>
                 <div className="flex items-center gap-1 -mr-2 pointer-events-auto">
+                    {/* Host Waiting List Indicator */}
+                    {isHost && waitingList.length > 0 && (
+                        <div className="relative mr-2">
+                            <button onClick={() => setShowOptionsDrawer(true)} className="bg-blue-600 px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+                                {waitingList.length} Waiting
+                            </button>
+                        </div>
+                    )}
                     <button onClick={switchCamera} className="p-2 text-white/90"><CameraswitchIcon /></button>
                 </div>
             </div>
@@ -668,18 +731,11 @@ export default function VideoMeetComponent() {
                     <ControlButton icon={CallEndIcon} onClick={handleEndCall} variant="danger" className="!bg-red-600 !hover:bg-red-700 !w-12 !h-12 !rounded-full" />
                     <ControlButton icon={video ? VideocamIcon : VideocamOffIcon} onClick={handleVideo} active={video} className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${!video ? '!bg-white !text-black' : '!text-white'}`} />
                     <ControlButton icon={audio ? MicIcon : MicOffIcon} onClick={handleAudio} active={audio} className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${!audio ? '!bg-white !text-black' : '!text-white'}`} />
-                    <ControlButton icon={EmojiEmotionsIcon} onClick={() => setShowEmojiPicker(!showEmojiPicker)} active={showEmojiPicker} className={`!w-12 !h-12 !rounded-full ${showEmojiPicker ? '!bg-blue-600 !text-white' : '!bg-[#3C4043] !text-white'}`} />
                     <ControlButton icon={MoreVertIcon} onClick={() => setShowOptionsDrawer(true)} className="!bg-[#3C4043] !text-white !w-12 !h-12 !rounded-full" />
                 </div>
             </motion.div>
 
             {/* Overlays */}
-            <AnimatePresence>
-                {showEmojiPicker && <EmojiPicker onSelect={(emoji) => { handleSendReaction(emoji); setShowEmojiPicker(false); }} onClose={() => setShowEmojiPicker(false)} />}
-            </AnimatePresence>
-            {reactions.map((reaction) => (
-                <EmojiBubble key={reaction.id} emoji={reaction.emoji} onComplete={() => setReactions(prev => prev.filter(r => r.id !== reaction.id))} />
-            ))}
             <OptionsDrawer
                 isOpen={showOptionsDrawer}
                 onClose={() => setShowOptionsDrawer(false)}
@@ -689,6 +745,9 @@ export default function VideoMeetComponent() {
                 onScreenShare={() => { handleScreen(); setShowOptionsDrawer(false); }}
                 isScreenSharing={screen}
                 onFullScreen={() => { !document.fullscreenElement ? document.documentElement.requestFullscreen() : document.exitFullscreen(); setShowOptionsDrawer(false); }}
+                waitingList={waitingList}
+                isHost={isHost}
+                onAdmit={handleAdmitUser}
             />
             <ChatPanel isOpen={showChat} onClose={() => setShowChat(false)} messages={messages} onSendMessage={handleSendMessage} currentUsername={username} newMessagesCount={newMessages} />
             <AnimatePresence>

@@ -1,210 +1,248 @@
 import { Server } from "socket.io"
 
 
-let connections = {}
-let messages = {}
-let timeOnline = {}
-let userNames = {} // Store socketId -> username mapping
+	// State
+	let connections = {}
+	let messages = {}
+	let timeOnline = {}
+	let userNames = {} // socketId -> username
+	let roomHosts = {} // roomPath -> socketId (The Host)
+	let waitingRoom = {} // roomPath -> [socketIds]
 
-export const connectToSocket = (server) => {
-    const io = new Server(server, {
-        cors: {
-            origin: "*",
-            methods: ["GET", "POST"],
-            allowedHeaders: ["*"],
-            credentials: true
-        }
-    });
+	export const connectToSocket = (server) => {
+		const io = new Server(server, {
+			cors: {
+				origin: "*",
+				methods: ["GET", "POST"],
+				allowedHeaders: ["*"],
+				credentials: true
+			}
+		});
 
+		io.on("connection", (socket) => {
+			console.log("User connected:", socket.id);
 
-    io.on("connection", (socket) => {
+			socket.on("join-call", (path, username) => {
+				console.log("Join request:", socket.id, "username:", username, "path:", path);
 
-        console.log("SOMETHING CONNECTED")
+				// Initialize room if not exists
+				if (connections[path] === undefined) {
+					connections[path] = []
+					waitingRoom[path] = []
+				}
 
-        socket.on("join-call", (path, username) => {
-            console.log("User joining:", socket.id, "username:", username, "path:", path);
+				// Check if room has a host
+				if (!roomHosts[path]) {
+					// First user becomes host
+					roomHosts[path] = socket.id;
+					joinRoom(socket, path, username);
+					// Notify they are host
+					socket.emit("listen-monitor", true); // Reusing/abusing this, or better emit 'you-are-host'
+					socket.emit("host-status", true);
+				} else {
+					// Host exists, put in waiting room
+					waitingRoom[path].push(socket.id);
+					userNames[socket.id] = username; // Store name so host knows who is waiting
+					
+					// Notify Host
+					io.to(roomHosts[path]).emit("waiting-list", {
+						socketId: socket.id,
+						username: username
+					});
+					
+					// Notify User they are waiting
+					socket.emit("room-status", "WAITING");
+				}
+			})
 
-            if (connections[path] === undefined) {
-                connections[path] = []
-            }
-            connections[path].push(socket.id)
+			const joinRoom = (socket, path, username) => {
+				if(!connections[path]) connections[path] = [];
+				if(connections[path].includes(socket.id)) return; // Already joined
 
-            // Store username
-            if (username) {
-                userNames[socket.id] = username;
-            }
+				connections[path].push(socket.id);
+				timeOnline[socket.id] = new Date();
+				if (username) userNames[socket.id] = username;
+				
+				socket.emit("room-status", "JOINED");
 
-            timeOnline[socket.id] = new Date();
+				// Broadcast to existing participants
+				for (let a = 0; a < connections[path].length; a++) {
+					const participantId = connections[path][a];
+					
+					// Send full list to the new guy (or everyone to be safe/simple)
+					// Actually, standard logic:
+					// 1. Tell everyone else "User X joined"
+					// 2. Send "All Users" to User X
+					
+					const usernamesInRoom = connections[path].map(id => ({
+						socketId: id,
+						username: userNames[id] || "Participant",
+						isHost: roomHosts[path] === id
+					}));
 
-            // Broadcast to all participants in the room
-            for (let a = 0; a < connections[path].length; a++) {
-                // Send list of all usernames in the room
-                const usernamesInRoom = connections[path].map(id => ({
-                    socketId: id,
-                    username: userNames[id] || `Participant ${connections[path].indexOf(id) + 1}`
-                }));
-                io.to(connections[path][a]).emit("user-joined", socket.id, connections[path], usernamesInRoom)
-            }
+					io.to(participantId).emit("user-joined", socket.id, connections[path], usernamesInRoom);
+				}
 
-            if (messages[path] !== undefined) {
-                for (let a = 0; a < messages[path].length; ++a) {
-                    io.to(socket.id).emit("chat-message", messages[path][a]['data'],
-                        messages[path][a]['sender'], messages[path][a]['socket-id-sender'])
-                }
-            }
+				if (messages[path] !== undefined) {
+					for (let a = 0; a < messages[path].length; ++a) {
+						io.to(socket.id).emit("chat-message", messages[path][a]['data'],
+							messages[path][a]['sender'], messages[path][a]['socket-id-sender'])
+					}
+				}
+			}
 
-        })
+			// Host admits user
+			socket.on("admit-user", (targetSocketId) => {
+				// Find room logic (simplified, assuming socket is in one room)
+				// In production store socket->room mapping
+				// Search for the room where this socket is the host
+				
+				const roomPath = Object.keys(roomHosts).find(key => roomHosts[key] === socket.id);
+				
+				if (roomPath && waitingRoom[roomPath] && waitingRoom[roomPath].includes(targetSocketId)) {
+					console.log(`Host ${socket.id} admitting ${targetSocketId} to ${roomPath}`);
+					
+					// Remove from waiting
+					waitingRoom[roomPath] = waitingRoom[roomPath].filter(id => id !== targetSocketId);
+					
+					// Execute join
+					const targetSocket = io.sockets.sockets.get(targetSocketId);
+					if (targetSocket) {
+						joinRoom(targetSocket, roomPath, userNames[targetSocketId]);
+						
+						// Notify host to update their waiting list UI
+						socket.emit("waiting-list-update", waitingRoom[roomPath].map(id => ({socketId: id, username: userNames[id]})));
+					}
+				}
+			});
 
-        socket.on("signal", (toId, message) => {
-            io.to(toId).emit("signal", socket.id, message);
-        })
+			socket.on("signal", (toId, message) => {
+				io.to(toId).emit("signal", socket.id, message);
+			})
 
-        socket.on("chat-message", (data, sender) => {
+			socket.on("chat-message", (data, sender) => {
+				const [matchingRoom, found] = Object.entries(connections)
+					.reduce(([room, isFound], [roomKey, roomValue]) => {
+						if (!isFound && roomValue.includes(socket.id)) {
+							return [roomKey, true];
+						}
+						return [room, isFound];
+					}, ['', false]);
 
-            const [matchingRoom, found] = Object.entries(connections)
-                .reduce(([room, isFound], [roomKey, roomValue]) => {
+				if (found === true) {
+					if (messages[matchingRoom] === undefined) {
+						messages[matchingRoom] = []
+					}
+					messages[matchingRoom].push({ 'sender': sender, "data": data, "socket-id-sender": socket.id })
+					connections[matchingRoom].forEach((elem) => {
+						io.to(elem).emit("chat-message", data, sender, socket.id)
+					})
+				}
+			})
 
+			socket.on("raise-hand", (username) => {
+				const [matchingRoom, found] = Object.entries(connections)
+					.reduce(([room, isFound], [roomKey, roomValue]) => {
+						if (!isFound && roomValue.includes(socket.id)) {
+							return [roomKey, true];
+						}
+						return [room, isFound];
+					}, ['', false]);
 
-                    if (!isFound && roomValue.includes(socket.id)) {
-                        return [roomKey, true];
-                    }
+				if (found === true) {
+					connections[matchingRoom].forEach((elem) => {
+						if (elem !== socket.id) {
+							io.to(elem).emit("raise-hand", socket.id, username)
+						}
+					})
+				}
+			})
 
-                    return [room, isFound];
+			socket.on("reaction", (emoji, username) => {
+				const [matchingRoom, found] = Object.entries(connections)
+					.reduce(([room, isFound], [roomKey, roomValue]) => {
+						if (!isFound && roomValue.includes(socket.id)) {
+							return [roomKey, true];
+						}
+						return [room, isFound];
+					}, ['', false]);
 
-                }, ['', false]);
+				if (found === true) {
+					connections[matchingRoom].forEach((elem) => {
+						if (elem !== socket.id) {
+							io.to(elem).emit("reaction", socket.id, emoji, username)
+						}
+					})
+				}
+			})
 
-            if (found === true) {
-                if (messages[matchingRoom] === undefined) {
-                    messages[matchingRoom] = []
-                }
+			socket.on("user-mute-status", (muted) => {
+				const [matchingRoom, found] = Object.entries(connections)
+					.reduce(([room, isFound], [roomKey, roomValue]) => {
+						if (!isFound && roomValue.includes(socket.id)) {
+							return [roomKey, true];
+						}
+						return [room, isFound];
+					}, ['', false]);
 
-                messages[matchingRoom].push({ 'sender': sender, "data": data, "socket-id-sender": socket.id })
-                console.log("message", matchingRoom, ":", sender, data)
+				if (found === true) {
+					connections[matchingRoom].forEach((elem) => {
+						if (elem !== socket.id) {
+							io.to(elem).emit("user-mute-status", socket.id, muted)
+						}
+					})
+				}
+			})
 
-                connections[matchingRoom].forEach((elem) => {
-                    io.to(elem).emit("chat-message", data, sender, socket.id)
-                })
-            }
+			// Host Permissions
+			socket.on("kick-user", (targetSocketId) => {
+				io.to(targetSocketId).emit("kicked");
+			})
 
-        })
+			socket.on("mute-user", (targetSocketId) => {
+				io.to(targetSocketId).emit("muted-by-host");
+			})
 
-        socket.on("raise-hand", (username) => {
-            console.log("Raise hand received from:", socket.id, "username:", username);
-            
-            const [matchingRoom, found] = Object.entries(connections)
-                .reduce(([room, isFound], [roomKey, roomValue]) => {
-                    if (!isFound && roomValue.includes(socket.id)) {
-                        return [roomKey, true];
-                    }
-                    return [room, isFound];
-                }, ['', false]);
+			socket.on("disconnect", () => {
+				var diffTime = Math.abs(timeOnline[socket.id] - new Date())
+				var key
+				for (const [k, v] of JSON.parse(JSON.stringify(Object.entries(connections)))) {
+					for (let a = 0; a < v.length; ++a) {
+						if (v[a] === socket.id) {
+							key = k
 
-            if (found === true) {
-                console.log("Broadcasting raise-hand to room:", matchingRoom, "participants:", connections[matchingRoom]);
-                connections[matchingRoom].forEach((elem) => {
-                    if (elem !== socket.id) {
-                        console.log("Sending raise-hand to:", elem);
-                        io.to(elem).emit("raise-hand", socket.id, username)
-                    }
-                })
-            } else {
-                console.log("Room not found for socket:", socket.id);
-            }
-        })
+							for (let a = 0; a < connections[key].length; ++a) {
+								io.to(connections[key][a]).emit('user-left', socket.id)
+							}
 
-        socket.on("reaction", (emoji, username) => {
-            console.log("Reaction received:", emoji, "from:", socket.id, "username:", username);
-            
-            const [matchingRoom, found] = Object.entries(connections)
-                .reduce(([room, isFound], [roomKey, roomValue]) => {
-                    if (!isFound && roomValue.includes(socket.id)) {
-                        return [roomKey, true];
-                    }
-                    return [room, isFound];
-                }, ['', false]);
+							var index = connections[key].indexOf(socket.id)
+							connections[key].splice(index, 1)
 
-            if (found === true) {
-                connections[matchingRoom].forEach((elem) => {
-                    if (elem !== socket.id) {
-                        io.to(elem).emit("reaction", socket.id, emoji, username)
-                    }
-                })
-            }
-        })
+							// Host Disconnect Logic
+							if (roomHosts[key] === socket.id) {
+								console.log("Host left room:", key);
+								// Assign new host
+								if (connections[key].length > 0) {
+									const newHostId = connections[key][0];
+									roomHosts[key] = newHostId;
+									io.to(newHostId).emit("host-status", true);
+									io.to(key).emit("system-message", `${userNames[newHostId] || 'Someone'} is now the host.`);
+								} else {
+									delete roomHosts[key];
+								}
+							}
 
-        socket.on("user-mute-status", (muted) => {
-            const [matchingRoom, found] = Object.entries(connections)
-                .reduce(([room, isFound], [roomKey, roomValue]) => {
-                    if (!isFound && roomValue.includes(socket.id)) {
-                        return [roomKey, true];
-                    }
-                    return [room, isFound];
-                }, ['', false]);
+							delete userNames[socket.id]
 
-            if (found === true) {
-                connections[matchingRoom].forEach((elem) => {
-                    if (elem !== socket.id) {
-                        io.to(elem).emit("user-mute-status", socket.id, muted)
-                    }
-                })
-            }
-        })
+							if (connections[key].length === 0) {
+								delete connections[key]
+							}
+						}
+					}
+				}
+			})
+		})
 
-        // Host Permissions
-        socket.on("kick-user", (targetSocketId) => {
-            console.log(`Kick request from ${socket.id} to kick ${targetSocketId}`);
-            // In a real app, verify if socket.id is actually the host. 
-            // For now, we allow any participant to kick (as per requested simplicity or relying on UI hiding).
-            io.to(targetSocketId).emit("kicked");
-            
-            // Also notify others so they can update their UI
-            // The 'disconnect' logic handles cleanup, but 'kicked' forces the client to leave.
-        })
-
-        socket.on("mute-user", (targetSocketId) => {
-            console.log(`Mute request from ${socket.id} to mute ${targetSocketId}`);
-            io.to(targetSocketId).emit("muted-by-host");
-        })
-
-        socket.on("disconnect", () => {
-
-            var diffTime = Math.abs(timeOnline[socket.id] - new Date())
-
-            var key
-
-            for (const [k, v] of JSON.parse(JSON.stringify(Object.entries(connections)))) {
-
-                for (let a = 0; a < v.length; ++a) {
-                    if (v[a] === socket.id) {
-                        key = k
-
-                        for (let a = 0; a < connections[key].length; ++a) {
-                            io.to(connections[key][a]).emit('user-left', socket.id)
-                        }
-
-                        var index = connections[key].indexOf(socket.id)
-
-                        connections[key].splice(index, 1)
-                        
-                        // Remove username mapping
-                        delete userNames[socket.id]
-
-
-                        if (connections[key].length === 0) {
-                            delete connections[key]
-                        }
-                    }
-                }
-
-            }
-
-
-        })
-
-
-    })
-
-
-    return io;
-}
+		return io;
+	}
 

@@ -2,13 +2,12 @@ import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
-import EmojiPicker from './EmojiPicker';
+
 
 const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, newMessagesCount = 0 }) => {
   const messagesEndRef = useRef(null);
   const [message, setMessage] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
 
   useEffect(() => {
     if (isOpen && messagesEndRef.current) {
@@ -30,10 +29,7 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, 
     }
   };
 
-  const handleEmojiSelect = (emoji) => {
-    setMessage(prev => prev + emoji);
-    setShowEmojiPicker(false);
-  };
+
 
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
@@ -41,7 +37,7 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, 
     const now = new Date();
     const diff = now - date;
     const minutes = Math.floor(diff / 60000);
-    
+
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -127,12 +123,6 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, 
           {/* Input Area */}
           <div className="p-3 sm:p-4 border-t border-white/10 bg-black/20 relative safe-area-bottom">
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 sm:px-4 py-2 focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500/50 transition-all">
-              <button
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="p-1.5 rounded-full text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-              >
-                <EmojiEmotionsIcon fontSize="small" />
-              </button>
               <input
                 type="text"
                 className="flex-1 bg-transparent text-sm sm:text-base text-white placeholder-gray-500 outline-none"
@@ -140,7 +130,6 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                onFocus={() => setShowEmojiPicker(false)}
                 autoComplete="off"
               />
               <button
@@ -148,27 +137,20 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, 
                 disabled={!message.trim()}
                 className={`
                   p-1.5 rounded-full transition-all
-                  ${message.trim() 
-                    ? 'text-indigo-400 hover:bg-indigo-500/20 hover:scale-110' 
+                  ${message.trim()
+                    ? 'text-indigo-400 hover:bg-indigo-500/20 hover:scale-110'
                     : 'text-gray-600 cursor-not-allowed'}
                 `}
               >
                 <SendIcon fontSize="small" />
               </button>
             </div>
-            
-            {/* Emoji Picker - Mobile Optimized */}
-            <div className="absolute bottom-full left-0 right-0 mb-2">
-              <EmojiPicker
-                isOpen={showEmojiPicker}
-                onClose={() => setShowEmojiPicker(false)}
-                onEmojiSelect={handleEmojiSelect}
-              />
-            </div>
+
           </div>
         </motion.div>
-      )}
-    </AnimatePresence>
+      )
+      }
+    </AnimatePresence >
   );
 };
 

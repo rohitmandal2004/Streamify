@@ -12,8 +12,8 @@ import Logo from './Logo';
 const Footer = () => {
   const socialLinks = [
     { icon: LinkedInIcon, href: 'https://linkedin.com', label: 'LinkedIn' },
-    { icon: GitHubIcon, href: 'https://github.com', label: 'GitHub' },
-    { icon: InstagramIcon, href: 'https://instagram.com', label: 'Instagram' },
+    { icon: GitHubIcon, href: 'https://github.com/rohitmandal2004', label: 'GitHub' },
+    { icon: InstagramIcon, href: 'https://www.instagram.com/i.am.rohit18/', label: 'Instagram' },
     { icon: FacebookIcon, href: 'https://facebook.com', label: 'Facebook' }
   ];
 
@@ -27,7 +27,7 @@ const Footer = () => {
     <footer className="relative mt-auto border-t border-white/10 bg-gradient-to-b from-transparent to-black/20 backdrop-blur-sm">
       {/* Top border glow */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12">
           {/* Left - Logo & Tagline */}
@@ -66,7 +66,7 @@ const Footer = () => {
                 </div>
                 <span className="text-sm">{contactInfo.name}</span>
               </motion.a>
-              
+
               <motion.a
                 href={`mailto:${contactInfo.email}`}
                 className="flex items-center gap-3 text-gray-400 hover:text-indigo-400 transition-colors group"
@@ -77,7 +77,7 @@ const Footer = () => {
                 </div>
                 <span className="text-sm break-all">{contactInfo.email}</span>
               </motion.a>
-              
+
               <motion.a
                 href={`tel:${contactInfo.phone.replace(/\s/g, '')}`}
                 className="flex items-center gap-3 text-gray-400 hover:text-indigo-400 transition-colors group"
