@@ -108,13 +108,13 @@ export default function Authentication() {
             if (tokenResponse && tokenResponse.access_token) {
               setGoogleLoading(true);
               setError('');
-              
+
               try {
                 // Fetch user info directly using access token
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                   headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
                 });
-                
+
                 if (!userInfoResponse.ok) {
                   throw new Error('Failed to fetch user info');
                 }
@@ -132,7 +132,10 @@ export default function Authentication() {
                 setOpen(true);
               } catch (err) {
                 console.error('Google auth error:', err);
-                setError('Failed to sign in with Google. Please try again.');
+                // Extract specific error message from backend response if available
+                const backendMsg = err.response?.data?.message;
+                const genericMsg = err.message;
+                setError(backendMsg || genericMsg || 'Failed to sign in with Google. Please try again.');
               } finally {
                 setGoogleLoading(false);
               }
@@ -164,14 +167,14 @@ export default function Authentication() {
       tokenClient.current.requestAccessToken();
     } else {
       // Try to re-initialize if it failed or wasn't ready
-       if (window.google && window.google.accounts) {
-          setError('Initializing Google Sign-In...');
-          // Re-init logic could go here but usually onload handles it.
-          // Just show a message to retry.
-          setError('Google Sign-In is correct loading. Please click again.');
-       } else {
-          setError('Google Sign-In script not loaded. Check your connection.');
-       }
+      if (window.google && window.google.accounts) {
+        setError('Initializing Google Sign-In...');
+        // Re-init logic could go here but usually onload handles it.
+        // Just show a message to retry.
+        setError('Google Sign-In is correct loading. Please click again.');
+      } else {
+        setError('Google Sign-In script not loaded. Check your connection.');
+      }
     }
   };
 
