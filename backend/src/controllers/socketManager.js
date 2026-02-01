@@ -201,6 +201,25 @@ import { Server } from "socket.io"
 				}
 			})
 
+            // Captions
+            socket.on("caption-message", (text, username) => {
+                const [matchingRoom, found] = Object.entries(connections)
+                    .reduce(([room, isFound], [roomKey, roomValue]) => {
+                        if (!isFound && roomValue.includes(socket.id)) {
+                            return [roomKey, true];
+                        }
+                        return [room, isFound];
+                    }, ['', false]);
+
+                if (found === true) {
+                    connections[matchingRoom].forEach((elem) => {
+                        if (elem !== socket.id) {
+                            io.to(elem).emit("caption-message", text, username);
+                        }
+                    })
+                }
+            })
+
 			// Host Permissions
 			socket.on("kick-user", (targetSocketId) => {
 				// Find room

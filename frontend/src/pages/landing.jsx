@@ -8,6 +8,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import SpeedIcon from '@mui/icons-material/Speed';
 import HighQualityIcon from '@mui/icons-material/HighQuality';
 import FloatingCubes from '../components/3d/FloatingCubes';
+import heroMockup from '../assets/hero-mockup.png'; // Import Hero Image
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -47,9 +48,7 @@ export default function LandingPage() {
           <Logo size="md" clickable={true} />
 
           <div className="flex items-center gap-6">
-            <Link to="/guest" className="text-sm font-medium text-gray-300 hover:text-white transition-colors hidden md:block">
-              Guest Join
-            </Link>
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -135,29 +134,41 @@ export default function LandingPage() {
                 <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></span>
               </motion.button>
 
-              <div className="flex items-center gap-4 px-4">
-                <div className="flex -space-x-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-gray-700 overflow-hidden">
-                      <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="user" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
+              <div className="flex items-center gap-6 px-4 ml-2">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-white text-base">Unlimited</span>
+                  <span className="text-xs text-gray-400">Duration</span>
                 </div>
-                <div className="text-sm">
-                  <span className="font-bold text-white">10k+</span>
-                  <span className="text-gray-500 block">Active Users</span>
+                <div className="w-px h-8 bg-white/10"></div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-white text-base">HD Quality</span>
+                  <span className="text-xs text-gray-400">Video & Audio</span>
                 </div>
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.9, rotateY: 20 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative h-[200px] lg:h-[400px] w-full flex items-center justify-center z-20 pointer-events-none"
+            className="relative lg:h-[500px] w-full flex items-center justify-center z-20 perspective-1000"
           >
-            {/* Empty container to maintain layout structure, or replaced by FloatingCubes */}
+            {/* Glowing Backdrop */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/30 to-purple-500/30 blur-[100px] rounded-full transform scale-75 pointer-events-none" />
+
+            <motion.div
+              animate={{ y: [0, -20, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="relative w-full max-w-lg lg:max-w-xl mx-auto rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/50 border border-white/10 group bg-black/50"
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none" />
+              <img
+                src={heroMockup}
+                alt="Streamify Interface"
+                className="w-full h-auto transform transition-transform duration-700 group-hover:scale-105"
+              />
+            </motion.div>
           </motion.div>
 
 

@@ -9,11 +9,17 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PersonIcon from '@mui/icons-material/Person';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PauseIcon from '@mui/icons-material/Pause';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import ClosedCaptionIcon from '@mui/icons-material/ClosedCaption';
+import StopIcon from '@mui/icons-material/Stop';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
+import ScreenShareIcon from '@mui/icons-material/ScreenShare'; // Added ScreenShareIcon if missing, and Person/MoreVert
+import PersonIcon from '@mui/icons-material/Person';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
 import BlockIcon from '@mui/icons-material/Block';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem'; // Import Icon
@@ -24,7 +30,7 @@ import ControlButton from '../components/ControlButton';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import OptionsDrawer from '../components/OptionsDrawer';
-import ReportModal from '../components/ReportModal'; // Import ReportModal
+import SettingsModal from '../components/SettingsModal'; // Import SettingsModal
 
 import FloatingCubes from '../components/3d/FloatingCubes';
 import CallTimer from '../components/CallTimer';
@@ -47,8 +53,6 @@ export default function VideoMeetComponent() {
     const { url: meetingId } = useParams();
     const navigate = useNavigate();
     const { addToUserHistory, reportUser } = useContext(AuthContext); // Get reportUser
-
-    // Refs
 
     // Refs
     var socketRef = useRef();
@@ -92,6 +96,14 @@ export default function VideoMeetComponent() {
     const [isWaiting, setIsWaiting] = useState(false);
     const [isHost, setIsHost] = useState(false);
     const [waitingList, setWaitingList] = useState([]);
+    const [settingsOpen, setSettingsOpen] = useState(false); // Define settingsOpen state
+    const [history, setHistory] = useState([]);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordedChunks, setRecordedChunks] = useState([]);
+    const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [showCaptions, setShowCaptions] = useState(false);
+    const [captionText, setCaptionText] = useState({ text: '', username: '' });
+    const recognitionRef = useRef(null);
 
     // Report State
     const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -118,6 +130,7 @@ export default function VideoMeetComponent() {
             if (window.localStream) {
                 window.localStream.getTracks().forEach(track => track.stop());
             }
+            stopRecognition(); // Stop speech recognition on unmount
         };
     }, []);
 
@@ -263,7 +276,6 @@ export default function VideoMeetComponent() {
             socketRef.current.on('kicked', () => {
                 console.log("Received kicked event");
                 alert("You have been kicked from the meeting by the host.");
-                alert("You have been kicked from the meeting by the host.");
                 navigate('/');
             });
 
@@ -317,6 +329,16 @@ export default function VideoMeetComponent() {
                     }, 5000);
                 }
             });
+
+            socketRef.current.on("user-mute-status", (socketId, muted) => {
+                setParticipantsMuted(prev => ({ ...prev, [socketId]: muted }));
+            })
+
+            socketRef.current.on("caption-message", (text, senderName) => {
+                setCaptionText({ text, username: senderName });
+                // Auto hide after 5 seconds
+                setTimeout(() => setCaptionText({ text: '', username: '' }), 5000);
+            })
         });
 
 
@@ -505,13 +527,22 @@ export default function VideoMeetComponent() {
     // Screen Share logic (simplified)
     const getDislayMedia = () => {
         if (screen) {
-            if (navigator.mediaDevices.getDisplayMedia) {
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
                 navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                     .then(getDislayMediaSuccess)
                     .catch((e) => {
                         console.log(e);
                         setScreen(false); // Revert switch if failed
+                        // Check if it's a mobile specific error or user cancelled
+                        if (e.name === 'NotAllowedError') {
+                            // User denied permission
+                        } else {
+                            alert("Screen sharing functionality is often limited or not supported on mobile browsers or this specific device.");
+                        }
                     })
+            } else {
+                setScreen(false);
+                alert("Screen sharing is not supported on this device/browser.");
             }
         } else {
             // Stop screen share
@@ -638,6 +669,134 @@ export default function VideoMeetComponent() {
         }
     };
 
+
+    // --- Recording Logic ---
+    const handleStartRecording = async () => {
+        try {
+            // We use getDisplayMedia to record the screen. 
+            // NOTE: Browsers FORCE a popup to choose what to share/record for security. We cannot bypass this.
+            // We set 'preferCurrentTab' to encourage recording the meeting itself.
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    displaySurface: "browser", // Prefer browser tab
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                },
+                preferCurrentTab: true, // Chrome specific: Default to current tab
+                selfBrowserSurface: "include",
+                systemAudio: "include"
+            });
+
+            // If user wants to record mic audio as well, we'd need to mix streams, 
+            // but for simplicity getDisplayMedia captures system audio which is usually what's wanted for meetings.
+
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recording-${new Date().toISOString()}.webm`;
+                a.click();
+                setRecordedChunks([]);
+                setIsRecording(false);
+
+                // Stop tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            recorder.start();
+            setMediaRecorder(recorder);
+            setIsRecording(true);
+
+            // Handle user stopping share from browser UI
+            stream.getVideoTracks()[0].onended = () => {
+                if (recorder.state !== 'inactive') recorder.stop();
+            };
+
+        } catch (err) {
+            console.error("Error starting recording:", err);
+            alert("Could not start recording. Permission denied or not supported.");
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+    };
+
+    // --- Captions Logic ---
+    const handleToggleCaptions = () => {
+        const newState = !showCaptions;
+        setShowCaptions(newState);
+
+        if (newState) {
+            startRecognition();
+        } else {
+            stopRecognition();
+            setCaptionText({ text: '', username: '' });
+        }
+    };
+
+    // --- Captions Overlay Component --- (Moved inline logic to here for clarity if needed, but keeping simple for now)
+
+    const startRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Speech recognition is not supported in this browser.");
+            setShowCaptions(false);
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+            const current = event.resultIndex;
+            const transcript = event.results[current][0].transcript;
+
+            // Send to socket ONLY if final (to avoid flooding network with partials)
+            if (event.results[current].isFinal) {
+                if (socketRef.current) {
+                    socketRef.current.emit('caption-message', transcript, username);
+                }
+            }
+
+            // ALWAYS show local transcript immediately (interim or final)
+            // This fixes "not showing" issue as user speaks
+            setCaptionText({ text: transcript, username: 'You' });
+
+            // Clear after silence
+            if (window.captionTimeout) clearTimeout(window.captionTimeout);
+            window.captionTimeout = setTimeout(() => setCaptionText({ text: '', username: '' }), 5000);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error", event.error);
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+    };
+
+    const stopRecognition = () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+        }
+    };
 
     // --- Render ---
     if (askForUsername) {
@@ -776,42 +935,23 @@ export default function VideoMeetComponent() {
                     <ControlButton icon={CallEndIcon} onClick={handleEndCall} variant="danger" className="!bg-red-600 !hover:bg-red-700 !w-12 !h-12 !rounded-full" />
                     <ControlButton icon={video ? VideocamIcon : VideocamOffIcon} onClick={handleVideo} active={video} className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${!video ? '!bg-white !text-black' : '!text-white'}`} />
                     <ControlButton icon={audio ? MicIcon : MicOffIcon} onClick={handleAudio} active={audio} className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${!audio ? '!bg-white !text-black' : '!text-white'}`} />
+                    <ControlButton icon={isRecording ? StopIcon : FiberManualRecordIcon} onClick={isRecording ? handleStopRecording : handleStartRecording} active={isRecording} className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${isRecording ? '!bg-red-500 !text-white' : '!text-white'}`} />
+                    <ControlButton icon={ClosedCaptionIcon} onClick={handleToggleCaptions} active={showCaptions} className={`!w-12 !h-12 !rounded-full !bg-[#3C4043] ${showCaptions ? '!bg-blue-500 !text-white' : '!text-white'}`} />
                     <ControlButton icon={MoreVertIcon} onClick={() => setShowOptionsDrawer(true)} className="!bg-[#3C4043] !text-white !w-12 !h-12 !rounded-full" />
                 </div>
             </motion.div>
 
-            {/* Overlays */}
-            <OptionsDrawer
-                isOpen={showOptionsDrawer}
-                onClose={() => setShowOptionsDrawer(false)}
-                onRaiseHand={() => { handleRaiseHand(); setShowOptionsDrawer(false); }}
-                isHandRaised={raisedHands[socketIdRef.current]}
-                onChat={() => { setShowChat(true); setShowOptionsDrawer(false); }}
-                onScreenShare={() => { handleScreen(); setShowOptionsDrawer(false); }}
-                isScreenSharing={screen}
-                onFullScreen={() => { !document.fullscreenElement ? document.documentElement.requestFullscreen() : document.exitFullscreen(); setShowOptionsDrawer(false); }}
-                waitingList={waitingList}
-                isHost={isHost}
-                onAdmit={handleAdmitUser}
-            />
-            <ReportModal
-                isOpen={reportModalOpen}
-                onClose={() => setReportModalOpen(false)}
-                onSubmit={submitReport}
-                reportedUsername={activeReportTarget?.username || 'User'}
-            />
-            <ChatPanel isOpen={showChat} onClose={() => setShowChat(false)} messages={messages} onSendMessage={handleSendMessage} currentUsername={username} newMessagesCount={newMessages} />
-            <AnimatePresence>
-                {showMeetingInfo && (
-                    <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowMeetingInfo(false)}>
-                        <motion.div className="bg-[#202124] border border-white/10 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
-                            <h2 className="text-xl font-bold mb-4">Meeting details</h2>
-                            <div className="font-mono text-lg font-bold text-white mb-2">{window.location.href}</div>
-                            <button onClick={() => navigator.clipboard.writeText(window.location.href)} className="text-blue-400">Copy Info</button>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Captions Overlay - Fixed Z-Index and Position */}
+            {captionText.text && (
+                <div className="fixed bottom-24 left-0 right-0 flex justify-center z-[100] pointer-events-none">
+                    <div className="bg-black/70 backdrop-blur-md px-6 py-4 rounded-2xl text-white max-w-2xl text-center shadow-lg transition-all transform animate-in fade-in slide-in-from-bottom-4">
+                        <p className="text-sm text-indigo-300 font-bold mb-1 uppercase tracking-wide">{captionText.username}</p>
+                        <p className="text-xl md:text-2xl font-medium leading-relaxed drop-shadow-md">{captionText.text}</p>
+                    </div>
+                </div>
+            )}
+
+            <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
     );
 }

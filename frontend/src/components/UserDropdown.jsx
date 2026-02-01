@@ -1,12 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '@mui/material/Avatar';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SettingsModal from './SettingsModal';
+import { AuthContext } from '../contexts/AuthContext';
 
 const UserDropdown = ({ userInitial = 'U' }) => {
+  const { userData } = useContext(AuthContext);
   const [open, setOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -56,6 +61,13 @@ const UserDropdown = ({ userInitial = 'U' }) => {
             <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               Account
             </div>
+
+            {/* User Profile Info */}
+            <div className="px-3 pb-3 mb-2 border-b border-white/10">
+              <p className="text-sm font-bold text-white truncate">{userData?.name || 'User'}</p>
+              <p className="text-xs text-gray-400 truncate">{userData?.email || userData?.username || ''}</p>
+            </div>
+
             <div
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-gray-200 hover:bg-white/10 transition-colors"
               onClick={() => {
@@ -70,6 +82,19 @@ const UserDropdown = ({ userInitial = 'U' }) => {
             <div className="h-px bg-white/10 my-1 mx-2"></div>
 
             <div
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-gray-200 hover:bg-white/10 transition-colors"
+              onClick={() => {
+                setOpen(false);
+                setShowSettings(true);
+              }}
+            >
+              <SettingsIcon fontSize="small" className="text-gray-400" />
+              <span className="text-sm font-medium">Settings</span>
+            </div>
+
+            <div className="h-px bg-white/10 my-1 mx-2"></div>
+
+            <div
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-400 hover:bg-red-500/10 transition-colors group"
               onClick={handleLogout}
             >
@@ -79,10 +104,10 @@ const UserDropdown = ({ userInitial = 'U' }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 };
 
 export default UserDropdown;
-
-
