@@ -109,6 +109,16 @@ export default function VideoMeetComponent() {
             setVideoAvailable(!!videoInput);
             setAudioAvailable(!!audioInput);
         });
+
+        // Cleanup function for unmounting
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => track.stop());
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -422,6 +432,9 @@ export default function VideoMeetComponent() {
             let tracks = localVideoref.current.srcObject.getTracks()
             tracks.forEach(track => track.stop())
         } catch (e) { }
+        if (socketRef.current) {
+            socketRef.current.disconnect();
+        }
         navigate('/');
     }
 
