@@ -8,6 +8,7 @@ import { Server } from "socket.io"
 	let userNames = {} // socketId -> username
 	let roomHosts = {} // roomPath -> socketId (The Host)
 	let waitingRoom = {} // roomPath -> [socketIds]
+	let bannedUsers = {} // roomPath -> [strings (username or IP or socketId)] - simplistic ban list
 
 	export const connectToSocket = (server) => {
 		const io = new Server(server, {
@@ -24,6 +25,12 @@ import { Server } from "socket.io"
 
 			socket.on("join-call", (path, username) => {
 				console.log("Join request:", socket.id, "username:", username, "path:", path);
+
+				// 1. Check if banned
+				if (bannedUsers[path] && bannedUsers[path].includes(username)) {
+					socket.emit("kicked"); // Re-use kicked event or specific 'banned' event
+					return;
+				}
 
 				// Initialize room if not exists
 				if (connections[path] === undefined) {
@@ -196,7 +203,20 @@ import { Server } from "socket.io"
 
 			// Host Permissions
 			socket.on("kick-user", (targetSocketId) => {
+				// Find room
+				const roomPath = Object.keys(connections).find(key => connections[key].includes(socket.id));
+				if (roomPath) {
+					// Add to ban list (using username if available, else socketId is futile but illustrative)
+					const targetUsername = userNames[targetSocketId];
+					if (targetUsername) {
+						if (!bannedUsers[roomPath]) bannedUsers[roomPath] = [];
+						bannedUsers[roomPath].push(targetUsername);
+					}
+				}
+				
 				io.to(targetSocketId).emit("kicked");
+				// Disconnect socket logic handled by client leaving, or force here:
+				// io.sockets.sockets.get(targetSocketId)?.disconnect();
 			})
 
 			socket.on("mute-user", (targetSocketId) => {

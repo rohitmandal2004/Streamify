@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }) => {
             });
             return request.data
         } catch
-         (err) {
+        (err) {
             throw err;
         }
     }
@@ -104,9 +104,18 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const reportUser = async (data) => {
+        try {
+            const request = await client.post("/report", data);
+            return request.data;
+        } catch (err) {
+            throw err;
+        }
+    }
+
 
     const data = {
-        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleGoogleAuth
+        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleGoogleAuth, reportUser
     }
 
     return (

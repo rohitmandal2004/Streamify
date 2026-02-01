@@ -16,6 +16,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
 import BlockIcon from '@mui/icons-material/Block';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem'; // Import Icon
 
 import SelfVideo from '../components/SelfVideo';
 import ChatPanel from '../components/ChatPanel';
@@ -23,6 +24,7 @@ import ControlButton from '../components/ControlButton';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import OptionsDrawer from '../components/OptionsDrawer';
+import ReportModal from '../components/ReportModal'; // Import ReportModal
 
 import FloatingCubes from '../components/3d/FloatingCubes';
 import CallTimer from '../components/CallTimer';
@@ -44,7 +46,9 @@ const peerConfigConnections = {
 export default function VideoMeetComponent() {
     const { url: meetingId } = useParams();
     const navigate = useNavigate();
-    const { addToUserHistory } = useContext(AuthContext);
+    const { addToUserHistory, reportUser } = useContext(AuthContext); // Get reportUser
+
+    // Refs
 
     // Refs
     var socketRef = useRef();
@@ -88,6 +92,10 @@ export default function VideoMeetComponent() {
     const [isWaiting, setIsWaiting] = useState(false);
     const [isHost, setIsHost] = useState(false);
     const [waitingList, setWaitingList] = useState([]);
+
+    // Report State
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [activeReportTarget, setActiveReportTarget] = useState(null); // { socketId, username }
 
     // --- Init & Permissions ---
     useEffect(() => {
@@ -599,6 +607,31 @@ export default function VideoMeetComponent() {
     }
 
 
+    const handleReportUser = (socketId, username) => {
+        setActiveReportTarget({ socketId, username });
+        setActiveMenu(null);
+        setReportModalOpen(true);
+    };
+
+    const submitReport = async ({ reason, description }) => {
+        if (!activeReportTarget) return;
+
+        try {
+            await reportUser({
+                reporterId: username, // Current user
+                reportedId: activeReportTarget.username || activeReportTarget.socketId,
+                roomCode: meetingId,
+                reason,
+                description
+            });
+            alert(`Report submitted for ${activeReportTarget.username}`);
+        } catch (error) {
+            console.error("Report error:", error);
+            alert("Failed to submit report. Please try again.");
+        }
+    };
+
+
     // --- Render ---
     if (askForUsername) {
         return (
@@ -718,6 +751,10 @@ export default function VideoMeetComponent() {
                                         <button onClick={() => handleKickUser(v.socketId)} className="w-full text-left px-3 py-2 text-sm hover:bg-red-500/20 text-red-400 flex items-center gap-2">
                                             <BlockIcon fontSize="small" /> Kick
                                         </button>
+                                        <div className="h-px bg-white/10 my-1" />
+                                        <button onClick={() => handleReportUser(v.socketId, v.username)} className="w-full text-left px-3 py-2 text-sm hover:bg-red-500/20 text-red-400 flex items-center gap-2">
+                                            <ReportProblemIcon fontSize="small" /> Report
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -749,6 +786,12 @@ export default function VideoMeetComponent() {
                 waitingList={waitingList}
                 isHost={isHost}
                 onAdmit={handleAdmitUser}
+            />
+            <ReportModal
+                isOpen={reportModalOpen}
+                onClose={() => setReportModalOpen(false)}
+                onSubmit={submitReport}
+                reportedUsername={activeReportTarget?.username || 'User'}
             />
             <ChatPanel isOpen={showChat} onClose={() => setShowChat(false)} messages={messages} onSendMessage={handleSendMessage} currentUsername={username} newMessagesCount={newMessages} />
             <AnimatePresence>

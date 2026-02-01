@@ -184,4 +184,31 @@ const googleAuth = async (req, res) => {
 }
 
 
-export { login, register, getUserHistory, addToHistory, googleAuth }
+import { Report } from "../models/report.model.js";
+
+// Report Abuse
+const reportUser = async (req, res) => {
+    const { reporterId, reportedId, roomCode, reason, description } = req.body;
+
+    if (!reporterId || !reportedId || !roomCode || !reason) {
+        return res.status(httpStatus.BAD_REQUEST).json({ message: "Missing required fields" });
+    }
+
+    try {
+        const newReport = new Report({
+            reporterId,
+            reportedId,
+            roomCode,
+            reason,
+            description
+        });
+
+        await newReport.save();
+
+        res.status(httpStatus.CREATED).json({ message: "Report submitted successfully" });
+    } catch (e) {
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: `Error submitting report: ${e.message}` });
+    }
+}
+
+export { login, register, getUserHistory, addToHistory, googleAuth, reportUser }
