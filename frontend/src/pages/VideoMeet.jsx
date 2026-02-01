@@ -99,38 +99,32 @@ export default function VideoMeetComponent() {
 
     // --- Init & Permissions ---
     useEffect(() => {
-        getPermissions();
+        // Simple permission check (optional, or just rely on the main getUserMedia to fail if denied)
+        // We actually don't need to ask permission twice. One stream request is enough to prompt.
+        // So we can just let the 'video' effect handle it.
+        // However, to set "videoAvailable" capability, we can assume true or check enumerateDevices.
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+            const videoInput = devices.find(d => d.kind === 'videoinput');
+            const audioInput = devices.find(d => d.kind === 'audioinput');
+            setVideoAvailable(!!videoInput);
+            setAudioAvailable(!!audioInput);
+        });
     }, []);
 
-    const getPermissions = async () => {
-        try {
-            const videoPermission = await navigator.mediaDevices.getUserMedia({ video: true });
-            setVideoAvailable(!!videoPermission);
-            const audioPermission = await navigator.mediaDevices.getUserMedia({ audio: true });
-            setAudioAvailable(!!audioPermission);
-            setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
-
-            if (videoAvailable || audioAvailable) {
-                const userMediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: videoAvailable ? { facingMode: 'user' } : false,
-                    audio: audioAvailable ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false
-                });
-                if (userMediaStream) {
-                    window.localStream = userMediaStream;
-                    if (localVideoref.current) {
-                        localVideoref.current.srcObject = userMediaStream;
-                    }
-                }
-            }
-        } catch (error) {
-            console.log(error);
-        }
-    };
-
     useEffect(() => {
-        if (video !== undefined) {
-            // Only run getUserMedia on video toggle or init, not audio
+        if (video) {
             getUserMedia();
+        } else {
+            // If video is turned off, we might want to stop tracks or show black frame
+            // The getUserMediaSuccess logic handles 'black' frame replacement when video is toggled off
+            // But if we just toggled state, we need to trigger the black frame logic:
+            try {
+                // If we have a stream, stop it?
+                // Actually the current getUserMediaSuccess logic creates a black frame ONLY when called.
+                // We should probably explicitly call a helper to stop video.
+                let tracks = localVideoref.current?.srcObject?.getVideoTracks();
+                if (tracks) tracks.forEach(t => t.enabled = false);
+            } catch (e) { }
         }
     }, [video]);
 
