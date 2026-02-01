@@ -150,7 +150,7 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUsername, 
         </motion.div>
       )
       }
-    </AnimatePresence >
+    </AnimatePresence>
   );
 };
 

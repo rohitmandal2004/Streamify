@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import io from "socket.io-client";
 import { motion, AnimatePresence } from 'framer-motion';
 import VideocamIcon from '@mui/icons-material/Videocam';
@@ -27,7 +27,7 @@ import OptionsDrawer from '../components/OptionsDrawer';
 import FloatingCubes from '../components/3d/FloatingCubes';
 import CallTimer from '../components/CallTimer';
 import { AuthContext } from '../contexts/AuthContext';
-import { useContext } from 'react';
+
 
 import { useNavigate, useParams } from 'react-router-dom';
 import server from '../environment';
@@ -56,9 +56,9 @@ export default function VideoMeetComponent() {
     // State
     let [videoAvailable, setVideoAvailable] = useState(true);
     let [audioAvailable, setAudioAvailable] = useState(true);
-    let [video, setVideo] = useState([]);
-    let [audio, setAudio] = useState();
-    let [screen, setScreen] = useState();
+    let [video, setVideo] = useState(true);
+    let [audio, setAudio] = useState(true);
+    let [screen, setScreen] = useState(false);
     let [showChat, setShowChat] = useState(false);
     let [screenAvailable, setScreenAvailable] = useState();
     let [messages, setMessages] = useState([]);
@@ -251,7 +251,8 @@ export default function VideoMeetComponent() {
             socketRef.current.on('kicked', () => {
                 console.log("Received kicked event");
                 alert("You have been kicked from the meeting by the host.");
-                window.location.href = '/';
+                alert("You have been kicked from the meeting by the host.");
+                navigate('/');
             });
 
             // Host Actions: Muted
@@ -419,7 +420,7 @@ export default function VideoMeetComponent() {
             let tracks = localVideoref.current.srcObject.getTracks()
             tracks.forEach(track => track.stop())
         } catch (e) { }
-        window.location.href = "/"
+        navigate('/');
     }
 
     let handleVideo = () => setVideo(!video);
@@ -651,7 +652,7 @@ export default function VideoMeetComponent() {
         <div className="h-dvh w-screen bg-[#202124] text-white overflow-hidden relative font-sans flex flex-col">
             {/* Top Bar */}
             <div className="absolute top-0 left-0 right-0 z-50 p-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
-                <button onClick={() => window.location.href = '/'} className="p-2 -ml-2 text-white/90 pointer-events-auto"><ArrowBackIcon /></button>
+                <button onClick={() => navigate('/')} className="p-2 -ml-2 text-white/90 pointer-events-auto"><ArrowBackIcon /></button>
                 <div className="flex items-center gap-3">
                     <div className="bg-[#202124]/80 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/10 flex items-center gap-2 pointer-events-auto cursor-pointer" onClick={() => setShowMeetingInfo(true)}>
                         <span>{meetingId}</span>
