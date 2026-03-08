@@ -27,18 +27,20 @@ const start = async () => {
         const uri = process.env.MONGO_URI;
         if (!uri) {
             console.error("CRITICAL: MONGO_URI is not defined in environment variables!");
-        } else {
-            const maskedUri = uri.replace(/\/\/.*:.*@/, "//****:****@");
-            console.log(`Attempting to connect to MongoDB with URI: ${maskedUri}`);
+            throw new Error("MONGO_URI environment variable is missing");
         }
 
-        const connectionDb = await mongoose.connect(process.env.MONGO_URI);
+        const maskedUri = uri.replace(/\/\/.*:.*@/, "//****:****@");
+        console.log(`Attempting to connect to MongoDB with URI: ${maskedUri}`);
+
+        const connectionDb = await mongoose.connect(uri);
         console.log(`✅ MONGO Connected. Host: ${connectionDb.connection.host}`);
     } catch (e) {
         console.error("❌ MONGODB CONNECTION ERROR:", e.message);
         if (e.message.includes("authentication failed")) {
             console.error("TIP: Double check your MongoDB Atlas username and password in the .env file.");
         }
+        process.exit(1);
     }
 
     server.listen(app.get("port"), () => {
