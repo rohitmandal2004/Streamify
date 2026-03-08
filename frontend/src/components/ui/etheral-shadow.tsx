@@ -63,7 +63,7 @@ export function Component({
     style,
     className,
     children,
-    showTitle = true,
+    showTitle = false,
 }: ShadowOverlayProps & { children?: React.ReactNode }) {
     const id = useInstanceId();
     const animationEnabled = animation && animation.scale > 0;
