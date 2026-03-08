@@ -4,6 +4,16 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// Suppress cross-origin "Script error." from external scripts (Google OAuth, three.js HDR assets)
+// These are non-fatal and cannot provide useful error info due to browser CORS policies.
+window.addEventListener('error', (event) => {
+  if (event.message === 'Script error.' || event.message === 'Script error') {
+    event.preventDefault();
+    console.warn('[Suppressed] Cross-origin script error (non-fatal)');
+    return true;
+  }
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>

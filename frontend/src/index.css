@@ -5,6 +5,13 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --destructive-foreground: oklch(1 0 0);
+  }
+  .dark {
+    --destructive-foreground: oklch(1 0 0);
+  }
+
   body {
     @apply bg-background text-white antialiased overflow-x-hidden;
   }

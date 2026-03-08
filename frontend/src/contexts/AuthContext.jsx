@@ -114,8 +114,31 @@ export const AuthProvider = ({ children }) => {
     }
 
 
+    const handleLogout = () => {
+        setUserData(null);
+        localStorage.removeItem("token");
+        router("/auth");
+    }
+
+    const handleProfileUpdate = async (email, phone, profileImage) => {
+        try {
+            const request = await client.put("/profile", {
+                token: localStorage.getItem("token"),
+                email,
+                phone,
+                profileImage
+            });
+            if (request.status === httpStatus.OK) {
+                setUserData(request.data.user);
+                return request.data;
+            }
+        } catch (err) {
+            throw err;
+        }
+    }
+
     const data = {
-        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleGoogleAuth, reportUser
+        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleGoogleAuth, reportUser, handleLogout, handleProfileUpdate
     }
 
     return (

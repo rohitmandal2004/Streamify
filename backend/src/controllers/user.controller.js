@@ -211,4 +211,48 @@ const reportUser = async (req, res) => {
     }
 }
 
-export { login, register, getUserHistory, addToHistory, googleAuth, reportUser }
+// Update Profile
+const updateProfile = async (req, res) => {
+    const { token, email, phone, profileImage } = req.body;
+
+    if (!token) {
+        return res.status(httpStatus.BAD_REQUEST).json({ message: "Token is required" });
+    }
+
+    try {
+        const user = await User.findOne({ token: token });
+        if (!user) {
+            return res.status(httpStatus.NOT_FOUND).json({ message: "User not found" });
+        }
+
+        // Check if email is being updated and if it's already in use by another account
+        if (email && email !== user.email) {
+            const existingEmail = await User.findOne({ email });
+            if (existingEmail) {
+                return res.status(httpStatus.CONFLICT).json({ message: "Email is already in use" });
+            }
+            user.email = email;
+        }
+
+        if (phone !== undefined) user.phone = phone;
+        if (profileImage !== undefined) user.profileImage = profileImage;
+
+        await user.save();
+
+        return res.status(httpStatus.OK).json({ 
+            message: "Profile updated successfully", 
+            user: {
+                name: user.name,
+                username: user.username,
+                email: user.email,
+                phone: user.phone,
+                profileImage: user.profileImage
+            }
+        });
+    } catch (e) {
+        console.error('Profile update error:', e);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: `Error updating profile: ${e.message}` });
+    }
+}
+
+export { login, register, getUserHistory, addToHistory, googleAuth, reportUser, updateProfile }

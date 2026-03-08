@@ -1,7 +1,27 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float, Environment, RoundedBox, Stars } from '@react-three/drei';
 import * as THREE from 'three';
+
+// Error boundary to catch cross-origin errors from external HDR assets
+class CanvasErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.warn('3D Canvas error caught:', error?.message || error);
+    }
+    render() {
+        if (this.state.hasError) {
+            return this.props.fallback || null;
+        }
+        return this.props.children;
+    }
+}
 
 const AccentColor = new THREE.Color('#6366f1'); // Indigo
 const SecondaryColor = new THREE.Color('#a855f7'); // Purple
@@ -110,29 +130,33 @@ const FloatingCubes = ({ count = 20 }) => {
         <div style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 0, // Ensure it's not behind the background color (-10 was too low)
+            zIndex: 0,
             pointerEvents: 'none',
         }}>
-            <Canvas
-                camera={{ position: [0, 0, 18], fov: 40 }}
-                gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
-                dpr={[1, 1.5]}
-            >
-                <fog attach="fog" args={['#050510', 10, 30]} /> {/* Match dark background */}
+            <CanvasErrorBoundary>
+                <Canvas
+                    camera={{ position: [0, 0, 18], fov: 40 }}
+                    gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
+                    dpr={[1, 1.5]}
+                >
+                    <fog attach="fog" args={['#050510', 10, 30]} />
 
-                <ambientLight intensity={0.8} />
-                <pointLight position={[10, 10, 10]} intensity={2} color="#8b5cf6" />
-                <pointLight position={[-10, -10, -10]} intensity={2} color="#3b82f6" />
+                    <ambientLight intensity={0.8} />
+                    <pointLight position={[10, 10, 10]} intensity={2} color="#8b5cf6" />
+                    <pointLight position={[-10, -10, -10]} intensity={2} color="#3b82f6" />
 
-                <group>
-                    {items.map((props, i) => (
-                        <GlassCube key={i} {...props} />
-                    ))}
-                </group>
+                    <group>
+                        {items.map((props, i) => (
+                            <GlassCube key={i} {...props} />
+                        ))}
+                    </group>
 
-                <Rig />
-                <Environment preset="city" />
-            </Canvas>
+                    <Rig />
+                    <Suspense fallback={null}>
+                        <Environment preset="city" />
+                    </Suspense>
+                </Canvas>
+            </CanvasErrorBoundary>
         </div>
     );
 };

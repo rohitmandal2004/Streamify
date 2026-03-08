@@ -32,7 +32,7 @@ import Button from '../components/Button';
 import OptionsDrawer from '../components/OptionsDrawer';
 import SettingsModal from '../components/SettingsModal'; // Import SettingsModal
 
-import FloatingCubes from '../components/3d/FloatingCubes';
+import { Component as EtheralShadow } from '../components/ui/etheral-shadow';
 import CallTimer from '../components/CallTimer';
 import { AuthContext } from '../contexts/AuthContext';
 
@@ -801,8 +801,16 @@ export default function VideoMeetComponent() {
     // --- Render ---
     if (askForUsername) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-                <FloatingCubes />
+            <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+                <div className="absolute inset-0 z-0">
+                    <EtheralShadow
+                        color="rgba(128, 128, 128, 1)"
+                        animation={{ scale: 100, speed: 90 }}
+                        noise={{ opacity: 1, scale: 1.2 }}
+                        sizing="fill"
+                        showTitle={false}
+                    />
+                </div>
                 <motion.div className="w-full max-w-lg bg-surface/50 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl relative z-10"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}>
@@ -823,8 +831,16 @@ export default function VideoMeetComponent() {
 
     if (isWaiting) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden text-center text-white">
-                <FloatingCubes />
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden text-center text-white">
+                <div className="absolute inset-0 z-0">
+                    <EtheralShadow
+                        color="rgba(128, 128, 128, 1)"
+                        animation={{ scale: 100, speed: 90 }}
+                        noise={{ opacity: 1, scale: 1.2 }}
+                        sizing="fill"
+                        showTitle={false}
+                    />
+                </div>
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}

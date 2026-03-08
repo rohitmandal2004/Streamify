@@ -3,11 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
-import Footer from '../components/Footer';
+import { Footer } from '../components/ui/footer';
+import { Component as EtheralShadow } from '../components/ui/etheral-shadow';
 import LockIcon from '@mui/icons-material/Lock';
 import SpeedIcon from '@mui/icons-material/Speed';
 import HighQualityIcon from '@mui/icons-material/HighQuality';
-import FloatingCubes from '../components/3d/FloatingCubes';
 import heroMockup from '../assets/hero-mockup.png'; // Import Hero Image
 
 export default function LandingPage() {
@@ -26,16 +26,17 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-white selection:bg-primary selection:text-white overflow-hidden font-sans">
+    <div className="min-h-screen bg-transparent text-white selection:bg-primary selection:text-white overflow-hidden font-sans">
 
-      {/* Background Gradients */}
+      {/* Background Ambience */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] mix-blend-screen" />
+        <EtheralShadow
+          color="rgba(128, 128, 128, 1)"
+          animation={{ scale: 100, speed: 90 }}
+          noise={{ opacity: 1, scale: 1.2 }}
+          sizing="fill"
+        />
       </div>
-
-      {/* 3D Floating Cubes Background */}
-      <FloatingCubes />
 
       {/* Navbar */}
       <motion.nav
@@ -209,7 +210,7 @@ export default function LandingPage() {
       </div >
 
       {/* Footer */}
-      < Footer />
+      <Footer />
     </div >
   );
 }

@@ -8,18 +8,10 @@ import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 import GoogleIcon from '@mui/icons-material/Google';
 import Logo from '../components/Logo';
-import Footer from '../components/Footer';
-import FloatingCubes from '../components/3d/FloatingCubes';
+import { Footer } from '../components/ui/footer';
 
 export default function Authentication() {
   const [username, setUsername] = React.useState('');
-  // ... (omitting unchanged lines for brevity in prompt construction, but tool will handle correct context)
-  // Wait, I need to be careful with replace_file_content context.
-  // I will split this into two replacements if needed, or one big one if contiguous.
-  // First replacement: Import.
-  // Second replacement: JSX.
-  // Actually, I can allow multiple edits or just do two calls. I'll do two calls to be safe and precise.
-
   const [password, setPassword] = React.useState('');
   const [name, setName] = React.useState('');
   const [error, setError] = React.useState('');
@@ -98,6 +90,7 @@ export default function Authentication() {
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
+    script.crossOrigin = 'anonymous';
     script.onload = () => {
       // Initialize Token Client
       if (window.google) {
@@ -179,9 +172,12 @@ export default function Authentication() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
-      {/* Dynamic Background */}
-      <FloatingCubes count={15} />
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-transparent text-white">
+      {/* Background Gradients - same as landing page */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] mix-blend-screen" />
+      </div>
 
       {/* Logo Above Form - Mobile Optimized */}
       <div className="flex justify-center pt-6 sm:pt-8 pb-3 sm:pb-4 relative z-20 px-4">
