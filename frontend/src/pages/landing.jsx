@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import Button from '../components/Button';
+import { useNavigate } from 'react-router-dom';
+import { motion, useScroll } from 'framer-motion';
 import Logo from '../components/Logo';
 import { Footer } from '../components/ui/footer';
 import { Component as EtheralShadow } from '../components/ui/etheral-shadow';
@@ -14,8 +13,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
-  const y2 = useTransform(scrollY, [0, 500], [0, -150]);
 
   useEffect(() => {
     const handleScroll = () => {

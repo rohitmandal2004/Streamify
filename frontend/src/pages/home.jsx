@@ -6,7 +6,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import UserDropdown from '../components/UserDropdown';
-import VideoCallIcon from '@mui/icons-material/VideoCall';
+
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import AddIcon from '@mui/icons-material/Add';
 import Logo from '../components/Logo';

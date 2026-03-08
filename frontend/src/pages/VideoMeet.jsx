@@ -1,20 +1,16 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import io from "socket.io-client";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PauseIcon from '@mui/icons-material/Pause';
-import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ClosedCaptionIcon from '@mui/icons-material/ClosedCaption';
 import StopIcon from '@mui/icons-material/Stop';
-import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import ScreenShareIcon from '@mui/icons-material/ScreenShare'; // Added ScreenShareIcon if missing, and Person/MoreVert
@@ -598,7 +594,6 @@ export default function VideoMeetComponent() {
             getDislayMedia();
         }
     }, [screen]);
-    let handleScreen = () => setScreen(!screen);
 
 
     let handleRaiseHand = () => {
@@ -649,24 +644,6 @@ export default function VideoMeetComponent() {
         setActiveReportTarget({ socketId, username });
         setActiveMenu(null);
         setReportModalOpen(true);
-    };
-
-    const submitReport = async ({ reason, description }) => {
-        if (!activeReportTarget) return;
-
-        try {
-            await reportUser({
-                reporterId: username, // Current user
-                reportedId: activeReportTarget.username || activeReportTarget.socketId,
-                roomCode: meetingId,
-                reason,
-                description
-            });
-            alert(`Report submitted for ${activeReportTarget.username}`);
-        } catch (error) {
-            console.error("Report error:", error);
-            alert("Failed to submit report. Please try again.");
-        }
     };
 
 
