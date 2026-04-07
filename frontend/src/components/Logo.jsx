@@ -33,18 +33,9 @@ const Logo = ({
       whileHover={clickable ? { scale: 1.05 } : {}}
       whileTap={clickable ? { scale: 0.95 } : {}}
     >
-      <div className={`${sizeConfig.icon} relative overflow-hidden rounded-xl`}>
-        <img
-          src={logoImg}
-          alt="Streamify Logo"
-          className="w-full h-full object-cover"
-        />
-      </div>
-      {showText && (
-        <span className={`${sizeConfig.text} font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-purple-200`}>
-          Streamify
-        </span>
-      )}
+      <span className={`${sizeConfig.text} font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.4)]`}>
+        Streamify
+      </span>
     </motion.div>
   );
 };

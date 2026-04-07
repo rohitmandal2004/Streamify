@@ -12,6 +12,7 @@ import { LayoutDashboard, UserCog, Settings, LogOut, CalendarDays } from 'lucide
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { cn } from '../lib/utils';
 import Logo from '../components/Logo';
+import { Skeleton } from '../components/ui/skeleton';
 import withAuth from '../utils/withAuth';
 
 function History() {
@@ -56,7 +57,7 @@ function History() {
   };
 
   return (
-    <div className={cn("flex flex-col md:flex-row bg-[#0B0D17] w-full flex-1 overflow-hidden h-screen text-white")}>
+    <div className={cn("flex flex-col md:flex-row bg-[#000000] w-full flex-1 overflow-hidden h-screen text-white")}>
       <Sidebar open={open} setOpen={setOpen}>
         <SidebarBody className="justify-between gap-10 bg-black/40 backdrop-blur-xl border-r border-white/10 relative z-50">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
@@ -116,9 +117,35 @@ function History() {
             </motion.div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
-                <p className="text-gray-500">Loading your meetings...</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-surface/40 backdrop-blur-md border border-white/5 rounded-3xl p-6">
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="flex items-center gap-3 w-full">
+                        <Skeleton className="w-10 h-10 rounded-xl" />
+                        <div className="w-full">
+                          <Skeleton className="h-3 w-20 mb-2" />
+                          <Skeleton className="h-5 w-32" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                  </div>
+                ))}
               </div>
             ) : meetings.length === 0 ? (
               <motion.div
@@ -170,6 +197,12 @@ function History() {
                           <AccessTimeIcon fontSize="small" /> Time
                         </span>
                         <span className="font-medium text-gray-200">{formatTime(meeting.date)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm py-2 border-b border-white/5">
+                        <span className="flex items-center gap-2 text-gray-400">
+                          <AccessTimeIcon fontSize="small" /> Duration
+                        </span>
+                        <span className="font-medium text-gray-200">{meeting.duration ? `${meeting.duration} Mins` : `Unknown`}</span>
                       </div>
                     </div>
 

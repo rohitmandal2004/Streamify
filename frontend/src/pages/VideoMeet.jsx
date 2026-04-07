@@ -48,7 +48,7 @@ const peerConfigConnections = {
 export default function VideoMeetComponent() {
     const { url: meetingId } = useParams();
     const navigate = useNavigate();
-    const { addToUserHistory, reportUser } = useContext(AuthContext); // Get reportUser
+    const { addToUserHistory, updateMeetingDuration, reportUser } = useContext(AuthContext);
 
     // Refs
     var socketRef = useRef();
@@ -56,6 +56,7 @@ export default function VideoMeetComponent() {
     let localVideoref = useRef();
     const videoRef = useRef([]);
     const connections = useRef({}).current;
+    const [historyId, setHistoryId] = useState(null);
 
     // State
     let [videoAvailable, setVideoAvailable] = useState(true);
@@ -268,7 +269,11 @@ export default function VideoMeetComponent() {
             setParticipantNames(prev => ({ ...prev, [socketRef.current.id]: username }));
 
             // Add to history
-            addToUserHistory(meetingId);
+            addToUserHistory(meetingId).then((data) => {
+                if (data && data.id) {
+                    setHistoryId(data.id);
+                }
+            });
 
             // Host Actions: Kicked
             socketRef.current.on('kicked', () => {
@@ -455,6 +460,12 @@ export default function VideoMeetComponent() {
         if (socketRef.current) {
             socketRef.current.disconnect();
         }
+
+        if (historyId) {
+            const durationMins = Math.max(1, Math.floor((Date.now() - callStartTime) / 60000));
+            updateMeetingDuration(historyId, durationMins);
+        }
+
         navigate('/');
     }
 

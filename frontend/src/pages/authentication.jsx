@@ -1,182 +1,16 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AuthContext } from '../contexts/AuthContext';
-import Toast from '../components/Toast';
-import Input from '../components/Input';
-import Button from '../components/Button';
-import PersonIcon from '@mui/icons-material/Person';
-import LockIcon from '@mui/icons-material/Lock';
-import GoogleIcon from '@mui/icons-material/Google';
+import { SignIn, SignUp } from '@clerk/clerk-react';
 import Logo from '../components/Logo';
 import { Footer } from '../components/ui/footer';
 
 export default function Authentication() {
-  const [username, setUsername] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [name, setName] = React.useState('');
-  const [error, setError] = React.useState('');
-  const [message, setMessage] = React.useState('');
   const [formState, setFormState] = React.useState(0); // 0 = Sign In, 1 = Sign Up
-  const [open, setOpen] = React.useState(false);
-  const [fieldErrors, setFieldErrors] = React.useState({});
-  const [loading, setLoading] = React.useState(false);
-  const [googleLoading, setGoogleLoading] = React.useState(false);
-  const tokenClient = React.useRef(null);
-
-  const { handleRegister, handleLogin, handleGoogleAuth } = React.useContext(AuthContext);
-
-  const validateForm = () => {
-    const errors = {};
-
-    if (!username.trim()) {
-      errors.username = 'Username is required';
-    }
-
-    if (!password.trim()) {
-      errors.password = 'Password is required';
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-
-    if (formState === 1 && !name.trim()) {
-      errors.name = 'Name is required';
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleAuth = async () => {
-    setError('');
-    setFieldErrors({});
-    setLoading(true);
-
-    if (!validateForm()) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      if (formState === 0) {
-        await handleLogin(username, password);
-      } else {
-        const result = await handleRegister(name, username, password);
-        setMessage(result);
-        setOpen(true);
-        setUsername('');
-        setPassword('');
-        setName('');
-        setFormState(0);
-      }
-    } catch (err) {
-      console.log(err);
-      const errorMessage = err.response?.data?.message || 'An error occurred';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleAuth();
-    }
-  };
-
-  // Google OAuth handler - Token Client Model (Popup)
-  React.useEffect(() => {
-    // Load Google Identity Services script
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.crossOrigin = 'anonymous';
-    script.onload = () => {
-      // Initialize Token Client
-      if (window.google) {
-        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
-          client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
-          callback: async (tokenResponse) => {
-            if (tokenResponse && tokenResponse.access_token) {
-              setGoogleLoading(true);
-              setError('');
-
-              try {
-                // Fetch user info directly using access token
-                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-
-                if (!userInfoResponse.ok) {
-                  throw new Error('Failed to fetch user info');
-                }
-
-                const googleData = await userInfoResponse.json();
-
-                await handleGoogleAuth({
-                  name: googleData.name,
-                  email: googleData.email,
-                  picture: googleData.picture,
-                  sub: googleData.sub
-                });
-
-                setMessage('Successfully signed in with Google!');
-                setOpen(true);
-              } catch (err) {
-                console.error('Google auth error:', err);
-                // Extract specific error message from backend response if available
-                const backendMsg = err.response?.data?.message;
-                const genericMsg = err.message;
-                setError(backendMsg || genericMsg || 'Failed to sign in with Google. Please try again.');
-              } finally {
-                setGoogleLoading(false);
-              }
-            }
-          },
-        });
-      }
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, [handleGoogleAuth]);
-
-  const handleGoogleSignIn = () => {
-    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-
-    if (!clientId || clientId === 'your_google_client_id_here') {
-      setError('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID in your .env file.');
-      setOpen(true);
-      return;
-    }
-
-    if (tokenClient.current) {
-      // Trigger the pop-up
-      tokenClient.current.requestAccessToken();
-    } else {
-      // Try to re-initialize if it failed or wasn't ready
-      if (window.google && window.google.accounts) {
-        setError('Initializing Google Sign-In...');
-        // Re-init logic could go here but usually onload handles it.
-        // Just show a message to retry.
-        setError('Google Sign-In is correct loading. Please click again.');
-      } else {
-        setError('Google Sign-In script not loaded. Check your connection.');
-      }
-    }
-  };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-transparent text-white">
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-black text-white">
       {/* Background Gradients - same as landing page */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] mix-blend-screen" />
+      <div className="fixed inset-0 z-0 pointer-events-none bg-black">
       </div>
 
       {/* Logo Above Form - Mobile Optimized */}
@@ -195,95 +29,34 @@ export default function Authentication() {
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
           {/* Left Panel - Illustration */}
-          <div className="hidden md:flex flex-col justify-center p-12 relative bg-gradient-to-br from-primary/20 to-purple-600/20">
-            <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:30px_30px]" />
+          <div className="hidden md:flex flex-col justify-center p-12 relative bg-black border-r border-white/5">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="relative z-10"
+              className="relative z-10 flex flex-col items-center text-center"
             >
-              <h2 className="text-4xl font-bold mb-4 font-sans">
-                Welcome <span className="text-gradient">Back!</span>
+              <img src="/images/isometric_auth_security.png" alt="Secure Digital Vault" className="w-full max-w-sm h-auto mb-8 drop-shadow-2xl hover:scale-[1.02] transition-transform duration-500" />
+              <h2 className="text-3xl font-black mb-3 font-sans tracking-tight">
+                Secure Access <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">Portal</span>
               </h2>
-              <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-                Connect with your loved ones, team, and friends through seamless, high-quality video calls.
+              <p className="text-sm text-gray-400 font-mono leading-relaxed mb-6">
+                Authenticate your credentials to access encrypted communication channels and enterprise workflows.
               </p>
-
-              <div className="space-y-4">
-                {[
-                  { text: "HD Video Quality", color: "bg-blue-500" },
-                  { text: "Real-time Chat", color: "bg-purple-500" },
-                  { text: "Secure & Private", color: "bg-green-500" }
-                ].map((item, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.1 }}
-                    className="flex items-center gap-3 text-gray-200"
-                  >
-                    <div className={`w-8 h-8 rounded-full ${item.color}/20 flex items-center justify-center`}>
-                      <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                    </div>
-                    <span className="font-medium">{item.text}</span>
-                  </motion.div>
-                ))}
+              
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 shadow-[0_0_10px_rgba(255,255,255,0.02)]">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                End-to-End Encryption Active
               </div>
             </motion.div>
           </div>
 
-          {/* Right Panel - Form - Mobile Optimized */}
-          <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center bg-black/20">
-            <div className="max-w-sm mx-auto w-full">
-              <div className="text-center mb-6 sm:mb-8">
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-                  {formState === 0 ? 'Sign In' : 'Create Account'}
-                </h3>
-                <p className="text-gray-400 text-xs sm:text-sm">
-                  {formState === 0 ? 'Welcome back to Streamify' : 'Join the Streamify community'}
-                </p>
-              </div>
 
-              {/* Google Sign In Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mb-6"
-              >
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  fullWidth
-                  onClick={handleGoogleSignIn}
-                  disabled={googleLoading}
-                  className="border-white/20 hover:border-white/30 hover:bg-white/10"
-                >
-                  {googleLoading ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Signing in...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <GoogleIcon className="text-lg" />
-                      Continue with Google
-                    </span>
-                  )}
-                </Button>
-              </motion.div>
-
-              {/* Divider */}
-              <div className="relative mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-black/20 text-gray-400">or</span>
-                </div>
-              </div>
-
+          {/* Right Panel - Form (Clerk UI) */}
+          <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center items-center bg-black/20">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={formState}
@@ -291,77 +64,29 @@ export default function Authentication() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
-                  className="space-y-4"
+                  className="w-full flex flex-col items-center"
                 >
-                  {formState === 1 && (
-                    <Input
-                      label="Full Name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      icon={PersonIcon}
-                      error={fieldErrors.name}
-                      autoFocus
+                  {formState === 0 ? (
+                    <SignIn 
+                      routing="path" 
+                      path="/auth"
+                      fallbackRedirectUrl="/home"
+                      appearance={{ elements: { footerAction: { display: "none" } } }}
+                    />
+                  ) : (
+                    <SignUp 
+                      routing="path" 
+                      path="/auth"
+                      fallbackRedirectUrl="/home"
+                      appearance={{ elements: { footerAction: { display: "none" } } }}
                     />
                   )}
-
-                  <Input
-                    label="Username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    icon={PersonIcon}
-                    error={fieldErrors.username}
-                    autoFocus={formState === 0}
-                  />
-
-                  <Input
-                    label="Password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    icon={LockIcon}
-                    error={fieldErrors.password}
-                    onKeyPress={handleKeyPress}
-                  />
-
-                  {error && !error.includes('Google OAuth') && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center"
-                    >
-                      {error}
-                    </motion.div>
-                  )}
-
-                  <div className="pt-2">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      onClick={handleAuth}
-                      disabled={loading}
-                      className="shadow-primary/20"
-                    >
-                      {loading ? (
-                        <span className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {formState === 0 ? 'Signing in...' : 'Creating account...'}
-                        </span>
-                      ) : (
-                        formState === 0 ? 'Sign In' : 'Create Account'
-                      )}
-                    </Button>
-                  </div>
 
                   <div className="mt-6 text-center">
                     <p className="text-gray-400 text-sm">
                       {formState === 0 ? "Don't have an account? " : "Already have an account? "}
                       <button
-                        onClick={() => {
-                          setFormState(formState === 0 ? 1 : 0);
-                          setError('');
-                          setFieldErrors({});
-                        }}
+                        onClick={() => setFormState(formState === 0 ? 1 : 0)}
                         className="text-primary hover:text-blue-400 font-semibold transition-colors focus:outline-none"
                       >
                         {formState === 0 ? 'Sign Up' : 'Sign In'}
@@ -370,30 +95,12 @@ export default function Authentication() {
                   </div>
                 </motion.div>
               </AnimatePresence>
-            </div>
           </div>
         </motion.div>
       </div>
 
       {/* Footer */}
       <Footer />
-
-      {/* Enhanced Toast */}
-      <Toast
-        open={open}
-        onClose={() => setOpen(false)}
-        message={message}
-        type="success"
-      />
-
-      {error && (
-        <Toast
-          open={!!error}
-          onClose={() => setError('')}
-          message={error}
-          type="error"
-        />
-      )}
     </div>
   );
 }

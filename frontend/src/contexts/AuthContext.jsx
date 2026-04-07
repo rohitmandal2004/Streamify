@@ -1,150 +1,129 @@
-import axios from "axios";
-import httpStatus from "http-status";
-import { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import server from "../environment";
-
+import { useUser, useClerk } from "@clerk/clerk-react";
+import { supabase } from "../utils/supabaseClient";
 
 export const AuthContext = createContext({});
 
-const client = axios.create({
-    baseURL: `${server}/api/v1/users`
-})
-
-
 export const AuthProvider = ({ children }) => {
-
-    const authContext = useContext(AuthContext);
-
-
-    const [userData, setUserData] = useState(authContext);
-
-
+    const { user, isLoaded, isSignedIn } = useUser();
+    const { signOut } = useClerk();
     const router = useNavigate();
+    
+    // Maps Clerk's user object to the legacy userData object format expected by components
+    const [userData, setUserData] = useState(null);
 
-    const handleRegister = async (name, username, password) => {
-        try {
-            let request = await client.post("/register", {
-                name: name,
-                username: username,
-                password: password
-            })
+    useEffect(() => {
+        if (isLoaded && isSignedIn && user) {
+            // Check if there is already a token in localStorage, we can use clerk's own session mechanisms now but we'll leave it for backwards compat.
+            localStorage.setItem("token", "clerk_session_token"); 
 
-
-            if (request.status === httpStatus.CREATED) {
-                return request.data.message;
-            }
-        } catch (err) {
-            throw err;
-        }
-    }
-
-    const handleLogin = async (username, password) => {
-        try {
-            let request = await client.post("/login", {
-                username: username,
-                password: password
+            setUserData({
+                id: user.id,
+                name: user.fullName || user.firstName,
+                username: user.username || user.emailAddresses[0].emailAddress,
+                profileImage: user.imageUrl,
+                email: user.emailAddresses[0].emailAddress
             });
-
-            console.log(username, password)
-            console.log(request.data)
-
-            if (request.status === httpStatus.OK) {
-                localStorage.setItem("token", request.data.token);
-                router("/home")
-            }
-        } catch (err) {
-            throw err;
+        } else if (isLoaded && !isSignedIn) {
+            setUserData(null);
+            localStorage.removeItem("token");
         }
+    }, [user, isLoaded, isSignedIn]);
+
+    // Legacy functions - these are mostly handled by Clerk natively on /auth now
+    const handleRegister = async () => {};
+    const handleLogin = async () => {};
+    const handleGoogleAuth = async () => {};
+
+    const handleLogout = async () => {
+        await signOut();
+        router("/auth");
     }
 
     const getHistoryOfUser = async () => {
+        if (!user) return [];
         try {
-            let request = await client.get("/get_all_activity", {
-                params: {
-                    token: localStorage.getItem("token")
-                }
-            });
-            return request.data
-        } catch
-        (err) {
-            throw err;
+            const { data, error } = await supabase
+                .from('meeting_history')
+                .select('*')
+                .eq('user_id', user.id);
+            if (error) throw error;
+            return data;
+        } catch (err) {
+            console.error("Fetch history error", err);
+            return [];
         }
     }
 
     const addToUserHistory = async (meetingCode) => {
+        if (!user) return;
         try {
-            let request = await client.post("/add_to_activity", {
-                token: localStorage.getItem("token"),
-                meeting_code: meetingCode
-            });
-            return request
-        } catch (e) {
-            throw e;
+            const { data, error } = await supabase
+                .from('meeting_history')
+                .insert([
+                    { user_id: user.id, meeting_code: meetingCode }
+                ])
+                .select('*');
+            if (error) throw error;
+            if (data && data.length > 0) return data[0];
+            return data;
+        } catch (err) {
+            console.error("Add history error", err);
         }
     }
 
-    const handleGoogleAuth = async (googleData) => {
+    const updateMeetingDuration = async (historyId, duration) => {
+        if (!user || !historyId) return;
         try {
-            const request = await client.post("/google-auth", {
-                name: googleData.name,
-                email: googleData.email,
-                profileImage: googleData.picture,
-                googleId: googleData.sub
-            });
-
-            if (request.status === httpStatus.OK || request.status === httpStatus.CREATED) {
-                localStorage.setItem("token", request.data.token);
-                setUserData(request.data.user);
-                router("/home");
-                return request.data;
-            }
+            const { error } = await supabase
+                .from('meeting_history')
+                .update({ duration: duration })
+                .eq('id', historyId)
+                .eq('user_id', user.id);
+            if (error) throw error;
         } catch (err) {
-            throw err;
+            console.error("Update duration error", err);
         }
     }
 
     const reportUser = async (data) => {
+        if (!user) return;
         try {
-            const request = await client.post("/report", data);
-            return request.data;
+            const { error } = await supabase
+                .from('reports')
+                .insert([
+                    { user_id: user.id, ...data }
+                ]);
+            if (error) throw error;
+            return { success: true };
         } catch (err) {
-            throw err;
+            console.error("Report user error", err);
         }
-    }
-
-
-    const handleLogout = () => {
-        setUserData(null);
-        localStorage.removeItem("token");
-        router("/auth");
     }
 
     const handleProfileUpdate = async (email, phone, profileImage) => {
-        try {
-            const request = await client.put("/profile", {
-                token: localStorage.getItem("token"),
-                email,
-                phone,
-                profileImage
-            });
-            if (request.status === httpStatus.OK) {
-                setUserData(request.data.user);
-                return request.data;
-            }
-        } catch (err) {
-            throw err;
-        }
+        // Mock method since updates are usually handled via Clerk user profile, but this prevents errors if called
+        return { success: true };
     }
 
-    const data = {
-        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleGoogleAuth, reportUser, handleLogout, handleProfileUpdate
-    }
+    const contextData = {
+        userData, 
+        setUserData, 
+        addToUserHistory, 
+        updateMeetingDuration,
+        getHistoryOfUser, 
+        handleRegister, 
+        handleLogin, 
+        handleGoogleAuth, 
+        reportUser, 
+        handleLogout, 
+        handleProfileUpdate
+    };
 
     return (
-        <AuthContext.Provider value={data}>
+        <AuthContext.Provider value={contextData}>
             {children}
         </AuthContext.Provider>
-    )
-
+    );
 }

@@ -4,6 +4,7 @@ import { Route, BrowserRouter as Router, Routes, useLocation } from 'react-route
 import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ClerkProvider } from '@clerk/clerk-react';
 
 const LandingPage = lazy(() => import('./pages/landing'));
 const Authentication = lazy(() => import('./pages/authentication'));
@@ -39,7 +40,7 @@ function App() {
             <Suspense fallback={<FullPageLoader />}>
               <Routes location={location} key={location.pathname}>
                 <Route path='/' element={<LandingPage />} />
-                <Route path='/auth' element={<Authentication />} />
+                <Route path='/auth/*' element={<Authentication />} />
                 <Route path='/home' element={<HomeComponent />} />
                 <Route path='/profile' element={<ProfilePage />} />
                 <Route path='/history' element={<History />} />
@@ -55,13 +56,17 @@ function App() {
   );
 }
 
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY || 'pk_test_cGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA';
+
 function AppWrapper() {
   return (
-    <Router>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </Router>
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <Router>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </Router>
+    </ClerkProvider>
   );
 }
 

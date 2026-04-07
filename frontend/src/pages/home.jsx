@@ -13,7 +13,8 @@ import Logo from '../components/Logo';
 import { Footer } from '../components/ui/footer';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { LayoutDashboard, UserCog, Settings, LogOut, CalendarDays } from 'lucide-react';
+import { supabase } from '../utils/supabaseClient';
+import { LayoutDashboard, UserCog, Settings, LogOut, CalendarDays, Star } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 function HomeComponent() {
@@ -21,6 +22,38 @@ function HomeComponent() {
   const [meetingCode, setMeetingCode] = useState('');
   const { userData, addToUserHistory, handleLogout } = useContext(AuthContext);
   const [open, setOpen] = useState(false);
+
+  const [reviewContent, setReviewContent] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewRole, setReviewRole] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  const handleSubmitReview = async () => {
+    if (!reviewContent.trim()) return;
+    setIsSubmittingReview(true);
+    try {
+      const { error } = await supabase.from('testimonials').insert([
+        {
+          user_id: userData?.id || 'anonymous',
+          name: userData?.fullName || userData?.firstName || 'Streamify User',
+          role: reviewRole || 'Professional',
+          content: reviewContent,
+          rating: reviewRating
+        }
+      ]);
+      if (error) throw error;
+      setReviewSuccess(true);
+      setReviewContent('');
+      setReviewRole('');
+      setTimeout(() => setReviewSuccess(false), 5000);
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const links = [
     {
@@ -30,13 +63,7 @@ function HomeComponent() {
         <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" />
       ),
     },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: (
-        <UserCog className="text-gray-300 h-5 w-5 flex-shrink-0" />
-      ),
-    },
+
     {
       label: "History",
       href: "/history",
@@ -93,11 +120,9 @@ function HomeComponent() {
   };
 
   return (
-    <div className={cn("flex flex-col md:flex-row bg-[#0B0D17] w-full flex-1 overflow-hidden h-screen text-white")}>
+    <div className={cn("flex flex-col md:flex-row bg-black w-full flex-1 overflow-hidden h-screen text-white")}>
       {/* Background Ambience */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none w-full h-full">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px]" />
+      <div className="fixed inset-0 z-0 bg-black w-full h-full pointer-events-none">
       </div>
 
       <Sidebar open={open} setOpen={setOpen}>
@@ -139,9 +164,7 @@ function HomeComponent() {
       <div className="flex flex-1 overflow-y-auto w-full relative h-screen">
         <div className="min-h-full bg-transparent relative flex flex-col w-full">
           {/* Background Gradients */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none w-full h-full">
-            <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
-            <div className="fixed bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] mix-blend-screen" />
+          <div className="absolute inset-0 z-0 bg-black pointer-events-none w-full h-full">
           </div>
 
           {/* Navbar - Mobile Optimized (Top bar since Sidebar handles Desktop) */}
@@ -157,29 +180,37 @@ function HomeComponent() {
           </motion.nav>
 
           {/* Main Content */}
-          <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 z-10 w-full max-w-7xl mx-auto pointer-events-none pt-10">
+          <div className="flex-1 flex flex-col xl:flex-row items-center justify-center gap-12 p-4 sm:p-6 z-10 w-full max-w-7xl mx-auto pointer-events-none pt-10">
             <motion.div
-              className="text-center max-w-2xl mb-8 sm:mb-16 pointer-events-auto"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
+              className="w-full xl:w-1/2 flex items-center justify-center pointer-events-auto"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-block px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs sm:text-sm font-medium text-indigo-400 mb-4 sm:mb-6 backdrop-blur-sm">
-                ✨ Secure & High Quality Video Meetings
-              </div>
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight relative px-2">
-                <span className="absolute -inset-2 sm:-inset-4 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-3xl opacity-50 animate-pulse"></span>
-                <span className="relative">Premium Video Meetings <br className="hidden sm:block" />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-                    for Everyone
-                  </span></span>
-              </h1>
-              <p className="text-sm sm:text-lg text-gray-400 leading-relaxed px-2">
-                Connect, collaborate, and celebrate from anywhere with crystal clear video and audio.
-              </p>
+              <img src="/images/isometric_dashboard_analytics.png" alt="Analytics Dashboard" className="max-w-full h-auto drop-shadow-2xl" />
             </motion.div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full max-w-4xl pointer-events-auto pb-10">
+            <motion.div
+              className="text-left w-full xl:w-1/2 pointer-events-auto"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="inline-block px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-slate-900 border border-slate-700 text-xs sm:text-sm font-medium text-slate-300 mb-4 sm:mb-6 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                Secure Environment Active
+              </div>
+              <h1 className="text-3xl sm:text-5xl md:text-5xl font-black mb-4 sm:mb-6 leading-tight font-sans tracking-tight drop-shadow">
+                Manage Secure <br />
+                <span className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">Comms Infrastructure</span>
+              </h1>
+              <p className="text-sm sm:text-base text-gray-400 font-mono mb-10 max-w-md leading-relaxed">
+                Seamlessly provision high-bandwidth, end-to-end encrypted rooms. Execute workflows instantly.
+              </p>
+            </motion.div>
+          </div>
+
+          <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 sm:gap-8 pb-20 z-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full pointer-events-auto">
               {/* Join Meeting Card */}
               <motion.div
                 className="bg-surface/50 backdrop-blur-xl p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-glow hover:shadow-indigo-500/20 group"
@@ -249,6 +280,52 @@ function HomeComponent() {
                 </div>
               </motion.div>
             </div>
+
+            {/* Submit Review Card */}
+            <div className="w-full p-5 sm:p-8 bg-surface/30 backdrop-blur-xl border border-white/10 rounded-2xl pointer-events-auto">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4">Leave a Review</h3>
+              {reviewSuccess ? (
+                <div className="p-4 bg-green-500/20 text-green-400 rounded-xl border border-green-500/30 font-medium">
+                  Thank you! Your review has been submitted and is now live on the landing page!
+                </div>
+              ) : (
+                <div className="space-y-4 text-left">
+                  <div className="flex gap-2 mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star 
+                        key={star} 
+                        className={`w-6 h-6 sm:w-8 sm:h-8 cursor-pointer transition-colors ${star <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`} 
+                        onClick={() => setReviewRating(star)}
+                      />
+                    ))}
+                  </div>
+                  <Input
+                    label="Your Role/Company (Optional)"
+                    value={reviewRole}
+                    onChange={(e) => setReviewRole(e.target.value)}
+                    placeholder="e.g. Product Manager at TechCo"
+                    className="bg-black/20"
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Your Review</label>
+                    <textarea 
+                      value={reviewContent}
+                      onChange={(e) => setReviewContent(e.target.value)}
+                      placeholder="How has Streamify helped your team?"
+                      className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 min-h-[100px]"
+                    />
+                  </div>
+                  <Button 
+                    variant="primary" 
+                    onClick={handleSubmitReview} 
+                    disabled={isSubmittingReview || !reviewContent.trim()}
+                  >
+                    {isSubmittingReview ? 'Submitting...' : 'Submit Testimonial'}
+                  </Button>
+                </div>
+              )}
+            </div>
+
           </div>
 
           <Footer />
