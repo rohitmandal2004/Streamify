@@ -19,6 +19,12 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
 import BlockIcon from '@mui/icons-material/Block';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem'; // Import Icon
+import GroupIcon from '@mui/icons-material/Group';
+import SendIcon from '@mui/icons-material/Send';
+import PanToolIcon from '@mui/icons-material/PanTool';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+
 
 import SelfVideo from '../components/SelfVideo';
 import ChatPanel from '../components/ChatPanel';
@@ -31,6 +37,7 @@ import SettingsModal from '../components/SettingsModal'; // Import SettingsModal
 import { Component as EtheralShadow } from '../components/ui/etheral-shadow';
 import CallTimer from '../components/CallTimer';
 import { AuthContext } from '../contexts/AuthContext';
+import Logo from '../components/Logo';
 
 
 import { useNavigate, useParams } from 'react-router-dom';
@@ -862,29 +869,27 @@ export default function VideoMeetComponent() {
     const remainingVideos = videos.length > 0 ? videos.slice(1) : [];
 
     return (
-<div className="bg-video-surface text-video-on-surface overflow-hidden h-screen flex flex-col font-body">
-  {/* Scanline effect layer */}
-  <div className="fixed inset-0 scanline z-[60] pointer-events-none opacity-50"></div>
+<div className="bg-black text-white overflow-hidden h-screen flex flex-col font-sans">
   
   {/* Top Bar Component */}
-  <header className="w-full top-0 sticky z-50 bg-video-background/80 backdrop-blur-md flex justify-between items-center px-6 py-4 border-b border-video-primary/10">
+  <header className="w-full top-0 sticky z-50 bg-black/40 backdrop-blur-xl flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-white/10">
     <div className="flex items-center gap-4">
-      <h1 className="text-xl font-headline font-bold text-video-primary tracking-tighter uppercase italic">Streamify <span className="text-white/90">HQ</span></h1>
-      <div className="h-4 w-[1px] bg-video-primary/20"></div>
-      <div className="flex items-center gap-2 px-3 py-1 rounded-sm bg-video-surface-container-high border border-video-primary/20">
-        <span className="w-1.5 h-1.5 rounded-full bg-video-primary animate-pulse shadow-[0_0_8px_#ccff00]"></span>
-        <span className="font-label text-[10px] font-bold tracking-[0.2em] text-video-primary"><CallTimer startTime={callStartTime} /></span>
+      <Logo size="sm" clickable={false} />
+      <div className="h-6 w-[1px] bg-white/10 hidden md:block"></div>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgb(99,102,241)]"></span>
+        <span className="text-xs font-bold tracking-widest text-indigo-300"><CallTimer startTime={callStartTime} /></span>
       </div>
-      <div className="bg-[#202124]/80 px-3 py-1 rounded-full text-xs font-medium border border-white/10 ml-2 text-white">
+      <div className="bg-white/5 px-3 py-1.5 rounded-full text-xs font-medium border border-white/10 ml-2 text-gray-300 hidden sm:block">
         M-ID: {meetingId}
       </div>
     </div>
     
-    <div className="flex items-center gap-6">
+    <div className="flex items-center gap-4 md:gap-6">
       <div className="flex -space-x-2">
          {/* Render up to 3 avatars based on total participants */}
          {[...Array(Math.min(3, totalParticipants))].map((_, i) => (
-             <div key={i} className="w-8 h-8 rounded-full border-2 border-video-background bg-video-surface-container-highest flex items-center justify-center text-xs text-video-primary font-bold">
+             <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-indigo-500/20 flex items-center justify-center text-xs text-indigo-300 font-bold backdrop-blur-md">
                  {(() => {
                     const keys = Object.keys(participantNames);
                     return participantNames[keys[i]]?.charAt(0) || "U";
@@ -892,132 +897,124 @@ export default function VideoMeetComponent() {
              </div>
          ))}
          {totalParticipants > 3 && (
-            <div className="w-8 h-8 rounded-full border-2 border-video-background bg-video-surface-container-highest flex items-center justify-center text-[10px] font-bold text-video-primary">
+            <div className="w-8 h-8 rounded-full border-2 border-black bg-surface/30 flex items-center justify-center text-[10px] font-bold text-gray-300 backdrop-blur-md">
               +{totalParticipants - 3}
             </div>
          )}
       </div>
       <div className="flex items-center gap-2">
         {isHost && waitingList.length > 0 && (
-          <button onClick={() => setShowOptionsDrawer(true)} className="px-3 py-1 text-xs bg-blue-600 rounded-full animate-pulse text-white font-bold">
+          <button onClick={() => setShowOptionsDrawer(true)} className="px-3 py-1 text-xs bg-indigo-600 rounded-full animate-pulse text-white font-bold hover:bg-indigo-500 transition-colors">
             {waitingList.length} Waiting
           </button>
         )}
-        <button onClick={switchCamera} className="p-2 rounded hover:bg-video-primary/10 transition-colors text-video-on-surface-variant hover:text-video-primary">
+        <button onClick={switchCamera} className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-300 hover:text-white">
           <CameraswitchIcon fontSize="small"/>
-        </button>
-        <button className="p-2 rounded hover:bg-video-primary/10 transition-colors text-video-on-surface-variant hover:text-video-primary">
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button className="p-2 rounded hover:bg-video-primary/10 transition-colors text-video-on-surface-variant hover:text-video-primary">
-          <span className="material-symbols-outlined">account_circle</span>
         </button>
       </div>
     </div>
   </header>
   
-  <main className="flex-1 flex overflow-hidden p-6 gap-6 bg-[radial-gradient(circle_at_center,_#0d140c_0%,_#050805_100%)]">
-    {/* Video Grid: Responsive Asymmetric Layout */}
-    <div className="flex-1 grid grid-cols-12 grid-rows-6 gap-4 h-full relative">
+  <main className="flex-1 flex overflow-hidden p-4 md:p-6 gap-6 relative">
+    {/* Abstract Background Elements */}
+    <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -mr-48 -mt-48 pointer-events-none"></div>
+    <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -ml-48 -mb-48 pointer-events-none"></div>
+
+    {/* Video Grid */}
+    <div className="flex-1 grid grid-cols-12 grid-rows-6 gap-4 h-full relative z-10">
       
-      {/* Active Speaker (Prominent Card) */}
-      <div className="col-span-8 row-span-4 relative rounded-xl overflow-hidden bg-video-surface-container-high cyber-border">
+      {/* Active Speaker */}
+      <div className="col-span-12 md:col-span-8 row-span-4 md:row-span-6 relative rounded-2xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group">
           {activeVideo ? (
               <video data-socket={activeVideo.socketId} ref={ref => { if (ref && activeVideo.stream) ref.srcObject = activeVideo.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
           ) : (
               <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover mirror-mode" />
           )}
         
-        <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded glass-panel">
-          <span className="material-symbols-outlined text-video-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-              {activeVideo ? (participantsMuted[activeVideo.socketId] ? "mic_off" : "mic") : (!audio ? "mic_off" : "mic")}
-          </span>
-          <span className="text-[10px] font-bold tracking-widest text-white uppercase">
+        <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
+          {activeVideo ? (participantsMuted[activeVideo.socketId] ? <MicOffIcon fontSize="small" className="text-white/80" /> : <MicIcon fontSize="small" className="text-white/80" />) : (!audio ? <MicOffIcon fontSize="small" className="text-white/80" /> : <MicIcon fontSize="small" className="text-white/80" />)}
+
+          <span className="text-[11px] font-bold tracking-wide text-white">
               {activeVideo ? activeVideo.username : (`You ${raisedHands['local'] ? "✋" : ""}`)}
           </span>
         </div>
         {!activeVideo && isRecording && (
-        <div className="absolute top-4 right-4 bg-red-500 px-3 py-1 rounded-sm flex items-center gap-2 neon-glow">
+        <div className="absolute top-4 right-4 bg-red-500/80 backdrop-blur-md border border-red-500/50 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
           <FiberManualRecordIcon fontSize="small" className="text-white animate-pulse" />
-          <span className="text-[9px] font-black text-white uppercase tracking-widest">Recording</span>
+          <span className="text-[10px] font-bold text-white uppercase tracking-widest">Recording</span>
         </div>
-        )}
-        {activeVideo && (
-            <div className="absolute top-4 right-4 bg-video-primary px-3 py-1 rounded-sm flex items-center gap-2 neon-glow">
-              <span className="material-symbols-outlined text-black text-[14px]">graphic_eq</span>
-              <span className="text-[9px] font-black text-black uppercase tracking-widest">Active_Comms</span>
-            </div>
         )}
       </div>
 
       {/* Side / Bottom Videos */}
-      {/* Self video if active is not local */}
-      {activeVideo && (
-          <div className="col-span-4 row-span-2 relative rounded-xl overflow-hidden bg-video-surface-container border border-video-primary/10 group">
-              <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity mirror-mode" />
-              <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2 py-1 rounded glass-panel">
-                  <span className="text-[9px] font-bold text-white uppercase tracking-wider">You {raisedHands['local'] && "✋"}</span>
-                  {!audio && <MicOffIcon fontSize="inherit" className="text-red-500" />}
+      <div className="col-span-12 md:col-span-4 row-span-2 md:row-span-6 flex md:flex-col gap-4 overflow-x-auto md:overflow-y-auto no-scrollbar">
+        {/* Self video if active is not local */}
+        {activeVideo && (
+            <div className="w-40 md:w-full flex-shrink-0 relative rounded-xl md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group aspect-video md:aspect-auto md:flex-1 w-full max-w-[200px] md:max-w-none">
+                <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity mirror-mode" />
+                <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
+                    <span className="text-[10px] font-bold text-white tracking-wide">You {raisedHands['local'] && "✋"}</span>
+                    {!audio && <MicOffIcon fontSize="inherit" className="text-red-400" />}
+                </div>
+            </div>
+        )}
+
+        {/* Remote Videos */}
+        {remainingVideos.slice(0, 4).map((v, i) => (
+            <div key={v.socketId} className="w-40 md:w-full flex-shrink-0 relative rounded-xl md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group aspect-video md:aspect-auto md:flex-1 w-full max-w-[200px] md:max-w-none">
+              <video data-socket={v.socketId} ref={ref => { if (ref && v.stream) ref.srcObject = v.stream; }} autoPlay playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
+                <span className="text-[10px] font-bold text-white tracking-wide">{v.username} {raisedHands[v.socketId] && "✋"}</span>
+                {participantsMuted[v.socketId] && <MicOffIcon fontSize="inherit" className="text-red-400" />}
               </div>
-          </div>
-      )}
-
-      {/* Remote Videos */}
-      {remainingVideos.slice(0, 4).map((v, i) => (
-          <div key={v.socketId} className={`${!activeVideo || i >= 1 ? 'col-span-3 row-span-2' : 'col-span-4 row-span-2'} relative rounded-xl overflow-hidden bg-video-surface-container border border-video-primary/10 group`}>
-            <video data-socket={v.socketId} ref={ref => { if (ref && v.stream) ref.srcObject = v.stream; }} autoPlay playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-            <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2 py-1 rounded glass-panel z-10">
-              <span className="text-[9px] font-bold text-white uppercase tracking-wider">{v.username} {raisedHands[v.socketId] && "✋"}</span>
-              {participantsMuted[v.socketId] && <MicOffIcon fontSize="inherit" className="text-red-500" />}
+              
+              {/* Host Controls */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                  <button
+                      onClick={() => setActiveMenu(activeMenu === v.socketId ? null : v.socketId)}
+                      className="p-1 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-white/10"
+                  >
+                      <MoreVertIcon fontSize="small" />
+                  </button>
+                  {activeMenu === v.socketId && (
+                      <div className="absolute right-0 top-8 bg-surface/90 backdrop-blur-xl rounded-xl border border-white/10 py-1 w-28 overflow-hidden shadow-xl">
+                          <button onClick={() => handleMuteUser(v.socketId)} className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors">Mute Audio</button>
+                          <button onClick={() => handleKickUser(v.socketId)} className="w-full text-left px-3 py-2 text-xs hover:bg-red-500/20 text-red-400 transition-colors">Kick User</button>
+                      </div>
+                  )}
+              </div>
             </div>
-            
-             {/* Host Controls */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                <button
-                    onClick={() => setActiveMenu(activeMenu === v.socketId ? null : v.socketId)}
-                    className="p-1 rounded bg-black/50 text-white"
-                >
-                    <MoreVertIcon fontSize="small" />
-                </button>
-                {activeMenu === v.socketId && (
-                    <div className="absolute right-0 top-8 bg-[#3C4043] rounded border border-white/10 py-1 w-24">
-                        <button onClick={() => handleMuteUser(v.socketId)} className="w-full text-left px-2 py-1 text-xs hover:bg-white/10 text-white">Mute</button>
-                        <button onClick={() => handleKickUser(v.socketId)} className="w-full text-left px-2 py-1 text-xs hover:bg-red-500/20 text-red-400">Kick</button>
-                    </div>
-                )}
+        ))}
+        
+        {/* Extra Participants Placeholder */}
+        {remainingVideos.length > (activeVideo ? 3 : 4) && (
+            <div className="w-40 md:w-full flex-shrink-0 relative rounded-xl md:rounded-2xl overflow-hidden bg-surface/10 backdrop-blur-md border border-dashed border-white/20 flex flex-col items-center justify-center text-gray-400 gap-2 hover:bg-surface/20 hover:text-white transition-all group cursor-pointer aspect-video md:aspect-auto md:flex-1" onClick={() => setShowOptionsDrawer(true)}>
+              <GroupIcon fontSize="large" className="group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold tracking-wide">+{remainingVideos.length - (activeVideo ? 3 : 4)} More</span>
             </div>
-          </div>
-      ))}
-      
-      {/* Extra Participants Placeholder */}
-      {remainingVideos.length > (activeVideo ? 3 : 4) && (
-          <div className="col-span-3 row-span-2 relative rounded-xl overflow-hidden bg-video-surface-container-high border-2 border-dashed border-video-primary/10 flex flex-col items-center justify-center text-video-primary/40 gap-2 hover:bg-video-primary/5 transition-all group cursor-pointer" onClick={() => setShowOptionsDrawer(true)}>
-            <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">group</span>
-            <span className="text-[10px] font-black font-headline uppercase tracking-widest">+{remainingVideos.length - (activeVideo ? 3 : 4)}_OTHERS</span>
-          </div>
-      )}
+        )}
+      </div>
 
-      {/* Captions Overlay inline */}
+      {/* Captions Overlay */}
       {captionText.text && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-md px-6 py-4 rounded-2xl text-white max-w-2xl text-center shadow-lg pointer-events-none z-50">
-              <p className="text-sm text-indigo-300 font-bold mb-1 uppercase tracking-wide">{captionText.username}</p>
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl text-white max-w-2xl text-center shadow-2xl pointer-events-none z-50">
+              <p className="text-xs text-indigo-400 font-bold mb-1 tracking-wide">{captionText.username}</p>
               <p className="text-xl md:text-2xl font-medium leading-relaxed drop-shadow-md">{captionText.text}</p>
           </div>
       )}
-
     </div>
     
     {/* Right Side Panel (Chat & Participants) */}
-    <aside className="w-80 h-full flex flex-col rounded-xl bg-video-surface-container border border-video-primary/20 shadow-[0_0_40px_rgba(0,0,0,0.5)] z-10 transition-all duration-300 relative">
-      <div className="p-4 flex items-center justify-between border-b border-video-primary/10">
-        <div className="flex gap-4">
-          <button className="text-video-primary font-headline font-bold text-xs border-b-2 border-video-primary pb-1 tracking-widest uppercase">Chat_LOG</button>
-          <button className="text-video-on-surface-variant font-headline font-medium text-xs pb-1 hover:text-video-primary transition-colors tracking-widest uppercase" onClick={() => setShowOptionsDrawer(true)}>Users ({totalParticipants})</button>
-        </div>
+    <aside className="hidden lg:flex w-80 h-full flex-col rounded-3xl bg-surface/30 backdrop-blur-xl border border-white/10 shadow-2xl z-20 relative overflow-hidden">
+      <div className="p-5 border-b border-white/10 flex justify-between items-center bg-black/20">
+        <h3 className="font-bold text-white text-sm tracking-wide">Meeting Chat</h3>
+        <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors" onClick={() => setShowOptionsDrawer(true)}>
+          {totalParticipants} People
+        </button>
       </div>
       
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6 scrollbar-thin scrollbar-thumb-video-primary/20">
+      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-white/10">
           {messages.map((m, idx) => {
               const date = new Date(m.timestamp);
               const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -1025,10 +1022,10 @@ export default function VideoMeetComponent() {
               return (
                 <div key={idx} className={`flex flex-col gap-1 ${isMe ? 'items-end' : ''}`}>
                   <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <span className="text-[9px] font-black text-video-primary uppercase tracking-tighter">{m.sender}</span>
-                    <span className="text-[8px] text-video-primary/30">{timeString}</span>
+                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{m.sender}</span>
+                    <span className="text-[9px] text-gray-500">{timeString}</span>
                   </div>
-                  <div className={`p-3 rounded text-[11px] leading-relaxed ${isMe ? 'bg-video-primary/10 border border-video-primary/40 text-video-on-surface' : 'bg-[#0a110a] border border-video-primary/20 text-video-on-surface-variant italic'}`}>
+                  <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] ${isMe ? 'bg-indigo-500/20 text-indigo-100 border border-indigo-500/30 rounded-br-sm' : 'bg-white/5 text-gray-200 border border-white/10 rounded-bl-sm'}`}>
                         {m.data}
                   </div>
                 </div>
@@ -1037,94 +1034,106 @@ export default function VideoMeetComponent() {
       </div>
       
       {/* Chat Input */}
-      <div className="p-4 bg-video-background/50">
-        <div className="relative flex items-center">
+      <div className="p-4 bg-black/20 border-t border-white/10">
+        <div className="relative flex items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
           <input 
             value={chatInput} 
             onChange={e => setChatInput(e.target.value)} 
             onKeyDown={handleChatSubmit}
-            className="w-full bg-video-surface-container-highest border border-video-primary/10 rounded-sm py-2 pl-4 pr-10 text-[11px] focus:ring-1 focus:ring-video-primary focus:border-video-primary placeholder-video-primary/20 text-video-primary" 
-            placeholder="Enter command..." 
+            className="w-full bg-transparent py-3 pl-4 pr-12 text-sm focus:outline-none placeholder-gray-500 text-white" 
+            placeholder="Send a message..." 
             type="text"
           />
-          <button onClick={handleChatSubmit} className="absolute right-2 p-1.5 text-video-primary hover:text-white transition-colors">
-            <span className="material-symbols-outlined text-[18px]">send</span>
+          <button onClick={handleChatSubmit} className="absolute right-2 p-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white transition-colors flex items-center justify-center">
+            <SendIcon fontSize="small" />
           </button>
         </div>
       </div>
     </aside>
   </main>
   
-  {/* Bottom Control Bar Component */}
-  <footer className="w-full bg-video-background px-10 py-6 flex items-center justify-between border-t border-video-primary/10 relative z-50">
-    {/* Left: Meeting Info */}
-    <div className="flex items-center gap-4 min-w-[200px]">
-      <span className="text-[10px] font-black text-video-primary/60 tracking-[0.3em] uppercase hidden md:inline">Session_Data</span>
-      <span className="material-symbols-outlined text-video-primary/40 text-sm hidden md:inline">expand_less</span>
+  {/* Bottom Control Bar */}
+  <footer className="w-full bg-black/40 backdrop-blur-xl px-4 md:px-8 py-4 sm:py-6 flex items-center justify-center md:justify-between border-t border-white/10 z-50">
+    <div className="hidden md:flex items-center gap-2 min-w-[200px]">
+       <span className="text-xs font-medium text-gray-400">Meeting secured</span>
     </div>
     
-    {/* Center: Main Controls */}
-    <div className="flex items-center gap-4 md:gap-6">
+    <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
       {/* Mic Control */}
-      <button onClick={handleAudio} className={`w-12 h-12 flex items-center justify-center rounded-sm text-video-primary border transition-all active:scale-90 group relative ${!audio ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'bg-video-surface-container-high border-video-primary/30 neon-glow hover:bg-video-primary hover:text-black hover:neon-glow-strong'}`}>
-        <span className="material-symbols-outlined group-hover:scale-110">{!audio ? 'mic_off' : 'mic'}</span>
-        {audio && <span className="absolute -top-1 -right-1 w-2 h-2 bg-video-primary rounded-full blur-[2px]"></span>}
+      <button onClick={handleAudio} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl text-white transition-all active:scale-95 shadow-lg ${!audio ? 'bg-red-500/20 border border-red-500/50 text-red-500 hover:bg-red-500/30' : 'bg-surface/50 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50'}`}>
+        {!audio ? <MicOffIcon /> : <MicIcon />}
       </button>
       
       {/* Video Control */}
-      <button onClick={handleVideo} className={`w-12 h-12 flex items-center justify-center rounded-sm text-video-primary border transition-all active:scale-90 group relative ${!video ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'bg-video-surface-container-high border-video-primary/30 neon-glow hover:bg-video-primary hover:text-black hover:neon-glow-strong'}`}>
-        <span className="material-symbols-outlined group-hover:scale-110">{!video ? 'videocam_off' : 'videocam'}</span>
-        {video && <span className="absolute -top-1 -right-1 w-2 h-2 bg-video-primary rounded-full blur-[2px]"></span>}
+      <button onClick={handleVideo} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl text-white transition-all active:scale-95 shadow-lg ${!video ? 'bg-red-500/20 border border-red-500/50 text-red-500 hover:bg-red-500/30' : 'bg-surface/50 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50'}`}>
+        {!video ? <VideocamOffIcon /> : <VideocamIcon />}
       </button>
 
       {/* Screen Share */}
-      <button onClick={() => setScreen(!screen)} className={`w-11 h-11 flex items-center justify-center rounded-sm bg-video-surface-container text-video-on-surface-variant/60 border border-video-outline-variant hover:border-video-primary/40 hover:text-video-primary transition-all active:scale-95 ${screen ? '!bg-video-primary !text-black neon-glow' : ''}`}>
-        <span className="material-symbols-outlined">present_to_all</span>
+      <button onClick={() => setScreen(!screen)} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg ${screen ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
+        <ScreenShareIcon />
       </button>
       
       {/* Reactions (Raise Hand mapped) */}
-      <button onClick={handleRaiseHand} className="w-11 h-11 flex items-center justify-center rounded-sm bg-video-surface-container text-video-on-surface-variant/60 border border-video-outline-variant hover:border-video-primary/40 hover:text-video-primary transition-all active:scale-95">
-        <span className="material-symbols-outlined">mood</span>
+      <button onClick={handleRaiseHand} className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg">
+        <PanToolIcon />
       </button>
       
       {/* More / Settings */}
-      <button onClick={() => setSettingsOpen(true)} className="w-11 h-11 flex items-center justify-center rounded-sm bg-video-surface-container text-video-on-surface-variant/60 border border-video-outline-variant hover:border-video-primary/40 hover:text-video-primary transition-all active:scale-95">
-         <span className="material-symbols-outlined">settings</span>
+      <button onClick={() => setSettingsOpen(true)} className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg">
+         <SettingsIcon />
       </button>
 
       {/* Record */}
-      <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`w-11 h-11 flex items-center justify-center rounded-sm bg-video-surface-container border border-video-outline-variant hover:border-red-500/50 hover:text-red-500 transition-all active:scale-95 ${isRecording ? '!text-red-500 !border-red-500/50 shadow-[0_0_15px_rgba(255,85,85,0.4)]' : 'text-video-on-surface-variant/60'}`}>
+      <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${isRecording ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400'}`}>
          <FiberManualRecordIcon fontSize="small" />
       </button>
       
       {/* Captions */}
-      <button onClick={handleToggleCaptions} className={`w-11 h-11 flex items-center justify-center rounded-sm bg-video-surface-container border border-video-outline-variant hover:border-video-primary/40 hover:text-video-primary transition-all active:scale-95 hidden sm:flex ${showCaptions ? '!border-blue-500 !text-blue-500 neon-glow' : 'text-video-on-surface-variant/60'}`}>
+      <button onClick={handleToggleCaptions} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${showCaptions ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-blue-500/20 hover:border-blue-500/50 hover:text-blue-400'}`}>
          <ClosedCaptionIcon fontSize="small" />
       </button>
       
       {/* Leave Button */}
-      <button onClick={handleEndCall} className="h-12 px-4 sm:px-8 flex items-center justify-center rounded-sm bg-video-error-container/20 border border-video-error/50 text-video-error font-headline font-black text-[11px] tracking-[0.2em] uppercase hover:bg-video-error hover:text-white transition-all active:scale-95 gap-3 shadow-[0_0_20px_rgba(255,85,85,0.1)]">
-        <span className="material-symbols-outlined text-[18px]">call_end</span>
-        <span className="hidden sm:inline">Disconnect</span>
+      <button onClick={handleEndCall} className="h-12 sm:h-14 px-6 sm:px-8 flex items-center justify-center rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all active:scale-95 gap-2 shadow-[0_0_20px_rgba(220,38,38,0.3)] ml-2 border border-red-500/50">
+        <CallEndIcon />
+
+        <span className="hidden sm:inline">Leave</span>
       </button>
     </div>
     
-    {/* Right: Utility Controls */}
-    <div className="flex items-center gap-3 min-w-[200px] justify-end hidden lg:flex">
-      <button className="p-2 rounded text-video-primary/40 hover:text-video-primary transition-colors">
-        <span className="material-symbols-outlined text-sm">info</span>
+    <div className="hidden md:flex items-center gap-3 min-w-[200px] justify-end">
+      <button className="w-10 h-10 rounded-full bg-surface/50 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors" onClick={() => setShowOptionsDrawer(true)}>
+        <GroupIcon fontSize="small" />
       </button>
-      <button className="p-2 rounded text-video-primary bg-video-primary/10 border border-video-primary/20 neon-glow">
-        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
-      </button>
-      <button onClick={() => setShowOptionsDrawer(true)} className="p-2 rounded text-video-primary/40 hover:text-video-primary transition-colors">
-        <span className="material-symbols-outlined text-sm">group</span>
+      <button className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/50 flex items-center justify-center text-indigo-300 hover:bg-indigo-500 hover:text-white transition-colors lg:hidden">
+        <ChatBubbleIcon fontSize="small" />
       </button>
     </div>
   </footer>
 
-  {/* Hidden Old OptionsDrawer & Settings Modal */}
-  <OptionsDrawer isOpen={showOptionsDrawer} onClose={() => setShowOptionsDrawer(false)} participants={participantNames} videos={videoRef.current} />
+  <OptionsDrawer 
+      isOpen={showOptionsDrawer} 
+      onClose={() => setShowOptionsDrawer(false)} 
+      onRaiseHand={handleRaiseHand}
+      isHandRaised={!!raisedHands['local']}
+      onChat={() => {}} 
+      onScreenShare={() => setScreen(!screen)}
+      isScreenSharing={screen}
+      onFullScreen={() => {
+         if (!document.fullscreenElement) {
+             document.documentElement.requestFullscreen().catch((err) => console.log(err));
+             setIsFullScreen(true);
+         } else {
+             if (document.exitFullscreen) document.exitFullscreen();
+             setIsFullScreen(false);
+         }
+      }}
+      isFullScreen={isFullScreen}
+      waitingList={waitingList}
+      isHost={isHost}
+      onAdmit={handleAdmitUser}
+  />
   <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
 </div>
     );

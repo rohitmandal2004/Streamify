@@ -49,9 +49,57 @@ export const AuthProvider = ({ children }) => {
                 .select('*')
                 .eq('user_id', user.id);
             if (error) throw error;
-            return data;
+            // Map the data back to the format expected by history.jsx
+            return data.map(item => ({
+                id: item.id,
+                meetingCode: item.meeting_code,
+                date: item.created_at, // Supabase automatically adds created_at by default
+                duration: item.duration
+            }));
         } catch (err) {
             console.error("Fetch history error", err);
+            return [];
+        }
+    }
+
+    const scheduleMeeting = async (meetingDetails) => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase
+                .from('scheduled_meetings')
+                .insert([
+                    { 
+                        user_id: user.id, 
+                        meeting_code: meetingDetails.meetingCode,
+                        meeting_name: meetingDetails.meetingName,
+                        scheduled_time: meetingDetails.scheduledTime,
+                        user_email: user.emailAddresses[0].emailAddress
+                    }
+                ])
+                .select('*');
+            if (error) throw error;
+            return data[0];
+        } catch (err) {
+            console.error("Schedule meeting error", err);
+            throw err;
+        }
+    }
+
+    const getScheduledMeetings = async () => {
+        if (!user) return [];
+        try {
+            const now = new Date().toISOString();
+            const { data, error } = await supabase
+                .from('scheduled_meetings')
+                .select('*')
+                .eq('user_id', user.id)
+                .gte('scheduled_time', now) // Only get future meetings
+                .order('scheduled_time', { ascending: true });
+            
+            if (error) throw error;
+            return data;
+        } catch (err) {
+            console.error("Fetch scheduled meetings error", err);
             return [];
         }
     }
@@ -113,6 +161,8 @@ export const AuthProvider = ({ children }) => {
         addToUserHistory, 
         updateMeetingDuration,
         getHistoryOfUser, 
+        scheduleMeeting,
+        getScheduledMeetings,
         handleRegister, 
         handleLogin, 
         handleGoogleAuth, 

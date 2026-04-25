@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
@@ -30,22 +30,77 @@ function CalendarPage() {
     const [selectedTime, setSelectedTime] = useState<string | null>("10:00");
     const [meetingName, setMeetingName] = useState("");
     const [bookedMeetings, setBookedMeetings] = useState<any[]>([]);
+    const [isBooking, setIsBooking] = useState(false);
     const navigate = useNavigate();
 
-    const handleBookMeeting = () => {
+    useEffect(() => {
+        if (context?.getScheduledMeetings) {
+            context.getScheduledMeetings().then((meetings: any) => {
+                if (meetings) {
+                    const formattedMeetings = meetings.map((m: any) => {
+                        const d = new Date(m.scheduled_time);
+                        return {
+                            id: m.meeting_code,
+                            name: m.meeting_name,
+                            date: d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" }),
+                            time: d.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: false }),
+                            link: `/${m.meeting_code}`
+                        };
+                    });
+                    setBookedMeetings(formattedMeetings);
+                }
+            });
+        }
+    }, [context]);
+
+    const handleBookMeeting = async () => {
         if (date && selectedTime) {
+            setIsBooking(true);
             const meetingId = Math.random().toString(36).substring(2, 9);
-            const newMeeting = {
-                id: meetingId,
-                name: meetingName || "Scheduled Meeting",
-                date: date.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" }),
-                time: selectedTime,
-                link: `/${meetingId}` // The main video meeting route catches /:url
+            
+            const [hours, minutes] = selectedTime.split(':');
+            const scheduledDate = new Date(date);
+            scheduledDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+            const meetingDetails = {
+                meetingCode: meetingId,
+                meetingName: meetingName || "Scheduled Meeting",
+                scheduledTime: scheduledDate.toISOString()
             };
-            setBookedMeetings([...bookedMeetings, newMeeting]);
-            setMeetingName("");
-            setDate(undefined);
-            setSelectedTime(null);
+
+            try {
+                if (context?.scheduleMeeting) {
+                    await context.scheduleMeeting(meetingDetails);
+                }
+
+                const backendUrl = "http://localhost:8000"; 
+                await fetch(`${backendUrl}/api/email/send-confirmation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userEmail: userData?.email,
+                        meetingName: meetingDetails.meetingName,
+                        scheduledTime: meetingDetails.scheduledTime,
+                        meetingLink: `/${meetingId}`
+                    })
+                });
+
+                const newMeeting = {
+                    id: meetingId,
+                    name: meetingDetails.meetingName,
+                    date: date.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" }),
+                    time: selectedTime,
+                    link: `/${meetingId}`
+                };
+                setBookedMeetings([...bookedMeetings, newMeeting]);
+                setMeetingName("");
+                setDate(undefined);
+                setSelectedTime(null);
+            } catch (err) {
+                console.error("Failed to book meeting", err);
+            } finally {
+                setIsBooking(false);
+            }
         }
     };
 

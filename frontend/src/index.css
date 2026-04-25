@@ -180,4 +180,9 @@
       background-size: 100% 4px;
       pointer-events: none;
   }
+
+  /* Mobile Bottom Bar overrides */
+  .mobile-sidebar-link span {
+    display: none !important;
+  }
 }

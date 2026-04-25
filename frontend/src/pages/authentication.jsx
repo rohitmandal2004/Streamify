@@ -71,14 +71,14 @@ export default function Authentication() {
                       routing="path" 
                       path="/auth"
                       fallbackRedirectUrl="/home"
-                      appearance={{ elements: { footerAction: { display: "none" } } }}
+                      appearance={{ elements: { footerAction: { display: "none" }, logoBox: { display: "none" } } }}
                     />
                   ) : (
                     <SignUp 
                       routing="path" 
                       path="/auth"
                       fallbackRedirectUrl="/home"
-                      appearance={{ elements: { footerAction: { display: "none" } } }}
+                      appearance={{ elements: { footerAction: { display: "none" }, logoBox: { display: "none" } } }}
                     />
                   )}
 

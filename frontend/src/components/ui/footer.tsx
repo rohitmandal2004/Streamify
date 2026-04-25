@@ -72,7 +72,7 @@ export const Footer: React.FC<React.HTMLAttributes<HTMLElement>> = ({ className,
         { label: 'LinkedIn', href: 'https://linkedin.com', icon: <LinkedInIcon /> },
         { label: 'GitHub', href: 'https://github.com/rohitmandal2004', icon: <GitHubIcon /> },
         { label: 'Instagram', href: 'https://www.instagram.com/i.am.rohit18/', icon: <InstagramIcon /> },
-        { label: 'Facebook', href: 'https://facebook.com', icon: <FacebookIcon /> },
+        { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=100063642362549', icon: <FacebookIcon /> },
     ];
 
     const usefulLinks = [
@@ -91,10 +91,7 @@ export const Footer: React.FC<React.HTMLAttributes<HTMLElement>> = ({ className,
                 {/* Company Info */}
                 <div className="flex flex-col items-start gap-4">
                     <div className="flex items-center gap-3">
-                        <img src={logoImg} alt="Streamify Logo" className="h-10 w-10 rounded-xl object-cover" />
-                        <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-purple-200">
-                            Streamify
-                        </span>
+                        <img src="/logo_new.png" alt="Streamify Logo" className="h-10 w-auto object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.4)]" />
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
                         Connect Anyone. Anywhere. Experience ultra-low latency video calls with crystal clear audio.

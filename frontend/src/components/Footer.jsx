@@ -14,7 +14,7 @@ const Footer = () => {
     { icon: LinkedInIcon, href: 'https://linkedin.com', label: 'LinkedIn' },
     { icon: GitHubIcon, href: 'https://github.com/rohitmandal2004', label: 'GitHub' },
     { icon: InstagramIcon, href: 'https://www.instagram.com/i.am.rohit18/', label: 'Instagram' },
-    { icon: FacebookIcon, href: 'https://facebook.com', label: 'Facebook' }
+    { icon: FacebookIcon, href: 'https://www.facebook.com/profile.php?id=100063642362549', label: 'Facebook' }
   ];
 
   const contactInfo = {

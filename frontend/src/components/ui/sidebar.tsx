@@ -105,56 +105,41 @@ export const DesktopSidebar = ({
     );
 };
 
+const extractLinks = (children: React.ReactNode): React.ReactElement[] => {
+    let links: React.ReactElement[] = [];
+    React.Children.forEach(children, (child) => {
+        if (!React.isValidElement(child)) return;
+        
+        const element = child as React.ReactElement<any>;
+        if (element.props && element.props.link) {
+            links.push(element);
+        } else if (element.props && element.props.children) {
+            links.push(...extractLinks(element.props.children));
+        }
+    });
+    return links;
+};
+
 export const MobileSidebar = ({
     className,
     children,
     ...props
 }: React.ComponentProps<"div">) => {
-    const { open, setOpen } = useSidebar();
+    const links = extractLinks(children);
     return (
-        <>
-            <div
-                className={cn(
-                    "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-transparent w-full text-white z-50 relative"
-                )}
-                {...props}
-            >
-                <div className="flex justify-end z-20 w-full">
-                    <Menu
-                        className="text-white cursor-pointer"
-                        onClick={() => setOpen(!open)}
-                    />
-                </div>
-                <AnimatePresence>
-                    {open && (
-                        <motion.div
-                            initial={{ x: "-100%", opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            exit={{ x: "-100%", opacity: 0 }}
-                            transition={{
-                                duration: 0.3,
-                                ease: "easeInOut",
-                            }}
-                            className={cn(
-                                "bg-white dark:bg-neutral-900 p-10 flex flex-col gap-8",
-                                className,
-                                "fixed h-full w-full inset-0 z-[100]"
-                            )}
-                        >
-                            <div
-                                className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200 cursor-pointer"
-                                onClick={() => setOpen(!open)}
-                            >
-                                <X />
-                            </div>
-                            <div className="flex flex-col gap-4 mt-8 w-full h-full overflow-y-auto overflow-x-hidden">
-                                {children}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        </>
+        <div
+            className="h-[4.5rem] flex flex-row md:hidden items-center justify-around bg-[#000000]/90 backdrop-blur-xl border-t border-white/10 w-full text-white z-[100] fixed bottom-0 left-0 right-0 px-2 safe-area-bottom"
+            {...props}
+        >
+            {links.map((link, idx) => {
+                const element = link as React.ReactElement<any>;
+                return (
+                    <div key={idx} className="flex-1 flex justify-center mobile-sidebar-link h-full items-center">
+                        {React.cloneElement(element, { className: cn(element.props.className, "justify-center w-full h-full !p-0 mx-auto flex items-center") })}
+                    </div>
+                );
+            })}
+        </div>
     );
 };
 
