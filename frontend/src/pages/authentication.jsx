@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignIn, SignUp } from '@clerk/clerk-react';
+import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { Footer } from '../components/ui/footer';
 
-export default function Authentication() {
-  const [formState, setFormState] = React.useState(0); // 0 = Sign In, 1 = Sign Up
+export default function Authentication({ mode = 'sign-in' }) {
+  const isSignIn = mode === 'sign-in';
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-black text-white">
@@ -59,38 +60,42 @@ export default function Authentication() {
           <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center items-center bg-black/20">
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={formState}
+                  key={mode}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
                   className="w-full flex flex-col items-center"
                 >
-                  {formState === 0 ? (
+                  {isSignIn ? (
                     <SignIn 
                       routing="path" 
-                      path="/auth"
+                      path="/sign-in"
+                      signUpUrl="/sign-up"
+                      forceRedirectUrl="/home"
                       fallbackRedirectUrl="/home"
                       appearance={{ elements: { footerAction: { display: "none" }, logoBox: { display: "none" } } }}
                     />
                   ) : (
                     <SignUp 
                       routing="path" 
-                      path="/auth"
+                      path="/sign-up"
+                      signInUrl="/sign-in"
+                      forceRedirectUrl="/home"
                       fallbackRedirectUrl="/home"
                       appearance={{ elements: { footerAction: { display: "none" }, logoBox: { display: "none" } } }}
                     />
                   )}
 
-                  <div className="mt-6 text-center">
+                  <div className="mt-6 text-center z-20 relative">
                     <p className="text-gray-400 text-sm">
-                      {formState === 0 ? "Don't have an account? " : "Already have an account? "}
-                      <button
-                        onClick={() => setFormState(formState === 0 ? 1 : 0)}
+                      {isSignIn ? "Don't have an account? " : "Already have an account? "}
+                      <Link
+                        to={isSignIn ? '/sign-up' : '/sign-in'}
                         className="text-primary hover:text-blue-400 font-semibold transition-colors focus:outline-none"
                       >
-                        {formState === 0 ? 'Sign Up' : 'Sign In'}
-                      </button>
+                        {isSignIn ? 'Sign Up' : 'Sign In'}
+                      </Link>
                     </p>
                   </div>
                 </motion.div>

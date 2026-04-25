@@ -8,6 +8,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 
 const LandingPage = lazy(() => import('./pages/landing'));
 const Authentication = lazy(() => import('./pages/authentication'));
+const SSOCallback = lazy(() => import('./pages/SSOCallback'));
 const VideoMeetComponent = lazy(() => import('./pages/VideoMeet'));
 const HomeComponent = lazy(() => import('./pages/home'));
 const History = lazy(() => import('./pages/history'));
@@ -40,7 +41,9 @@ function App() {
             <Suspense fallback={<FullPageLoader />}>
               <Routes location={location} key={location.pathname}>
                 <Route path='/' element={<LandingPage />} />
-                <Route path='/auth/*' element={<Authentication />} />
+                <Route path='/sign-in/*' element={<Authentication mode="sign-in" />} />
+                <Route path='/sign-up/*' element={<Authentication mode="sign-up" />} />
+                <Route path='/sso-callback' element={<SSOCallback />} />
                 <Route path='/home' element={<HomeComponent />} />
                 <Route path='/profile' element={<ProfilePage />} />
                 <Route path='/history' element={<History />} />
@@ -60,7 +63,13 @@ const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY || 'pk_test_cGxh
 
 function AppWrapper() {
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
+    <ClerkProvider 
+      publishableKey={clerkPubKey}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/home"
+      signUpFallbackRedirectUrl="/home"
+    >
       <Router>
         <ThemeProvider>
           <App />

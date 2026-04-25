@@ -16,7 +16,7 @@ const withAuth = (WrappedComponent, skeletonVariant = 'dashboard') => {
 
         useEffect(() => {
             if(!isAuthenticated()) {
-                router("/auth");
+                router("/sign-in");
             } else {
                 // Small delay for skeleton to be visible (feels more polished)
                 const timer = setTimeout(() => setIsChecking(false), 400);

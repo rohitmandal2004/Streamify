@@ -33,7 +33,7 @@ const UserDropdown = ({ userInitial = 'U' }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/auth');
+    navigate('/sign-in');
   };
 
   return (

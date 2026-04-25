@@ -77,7 +77,7 @@ export const Footer: React.FC<React.HTMLAttributes<HTMLElement>> = ({ className,
 
     const usefulLinks = [
         { label: 'Home', href: '/home' },
-        { label: 'Start Meeting', href: '/auth' },
+        { label: 'Start Meeting', href: '/sign-in' },
         { label: 'History', href: '/history' },
         { label: 'Privacy Policy', href: '#' },
     ];

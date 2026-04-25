@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
 
     const handleLogout = async () => {
         await signOut();
-        router("/auth");
+        router("/sign-in");
     }
 
     const getHistoryOfUser = async () => {

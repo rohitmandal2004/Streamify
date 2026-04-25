@@ -118,7 +118,7 @@ export default function LandingPage() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/sign-in')}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)] transition-all"
             >
               Sign In
@@ -126,7 +126,7 @@ export default function LandingPage() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/sign-in')}
               className="hidden sm:inline-flex px-5 py-2.5 rounded-xl text-sm font-semibold btn-gradient text-white shadow-lg shadow-primary-600/20"
             >
               Get Started
@@ -166,7 +166,7 @@ export default function LandingPage() {
               <motion.button
                 whileHover={{ scale: 1.03, boxShadow: '0 20px 40px -10px rgba(37, 99, 235, 0.3)' }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/sign-in')}
                 className="px-8 py-4 rounded-2xl font-semibold text-base btn-gradient text-white shadow-lg shadow-primary-600/25 flex items-center justify-center gap-2 touch-manipulation"
               >
                 <Video size={20} /> Start Meeting
@@ -174,7 +174,7 @@ export default function LandingPage() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/sign-in')}
                 className="px-8 py-4 rounded-2xl font-semibold text-base bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-[var(--glass-bg-hover)] flex items-center justify-center gap-2 touch-manipulation backdrop-blur-sm"
               >
                 Join Meeting <ArrowRight size={18} />
@@ -382,7 +382,7 @@ export default function LandingPage() {
             <motion.button
               whileHover={{ scale: 1.03, boxShadow: '0 20px 40px -10px rgba(37, 99, 235, 0.3)' }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/sign-in')}
               className="px-10 py-4 rounded-2xl font-semibold text-base btn-gradient text-white shadow-lg shadow-primary-600/25 inline-flex items-center gap-2 touch-manipulation"
             >
               Get Started Free <ChevronRight size={20} />
