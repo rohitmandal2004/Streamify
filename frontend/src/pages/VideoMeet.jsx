@@ -25,7 +25,9 @@ import SendIcon from '@mui/icons-material/Send';
 import PanToolIcon from '@mui/icons-material/PanTool';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
-
+import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
+import MoodIcon from '@mui/icons-material/Mood';
+import { AnimatePresence } from 'framer-motion';
 
 import SelfVideo from '../components/SelfVideo';
 import ChatPanel from '../components/ChatPanel';
@@ -98,6 +100,9 @@ export default function VideoMeetComponent() {
     // Menu State for Host Actions
     const [activeMenu, setActiveMenu] = useState(null); // socketId of user whose menu is open
 
+    // PiP & Reactions
+    const [floatingReactions, setFloatingReactions] = useState([]);
+    const [showReactionsMenu, setShowReactionsMenu] = useState(false);
     // Waiting Room State
     const [isWaiting, setIsWaiting] = useState(false);
     const [isHost, setIsHost] = useState(false);
@@ -423,6 +428,14 @@ export default function VideoMeetComponent() {
                 // Auto hide after 5 seconds
                 setTimeout(() => setCaptionText({ text: '', username: '' }), 5000);
             })
+
+            socketRef.current.on("reaction", (socketId, emoji, senderName) => {
+                const reactionItem = { id: Date.now() + Math.random(), emoji, username: senderName, left: Math.random() * 80 + 10 };
+                setFloatingReactions(prev => [...prev, reactionItem]);
+                setTimeout(() => {
+                    setFloatingReactions(prev => prev.filter(r => r.id !== reactionItem.id));
+                }, 4000);
+            });
         });
 
 
@@ -560,6 +573,44 @@ export default function VideoMeetComponent() {
 
         if (socketRef.current) {
             socketRef.current.emit('user-mute-status', !newAudioState); // Emit true if muted (audio false)
+        }
+    };
+
+    const handleReaction = (emoji) => {
+        if (socketRef.current) {
+            socketRef.current.emit("reaction", emoji, username);
+        }
+        const reactionItem = { id: Date.now() + Math.random(), emoji, username: 'You', left: Math.random() * 80 + 10 };
+        setFloatingReactions(prev => [...prev, reactionItem]);
+        setShowReactionsMenu(false);
+        setTimeout(() => {
+            setFloatingReactions(prev => prev.filter(r => r.id !== reactionItem.id));
+        }, 4000);
+    };
+
+    const handlePiP = async () => {
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            } else {
+                let videoElement = null;
+                if (activeVideo && activeVideo.socketId) {
+                    videoElement = document.querySelector(`video[data-socket="${activeVideo.socketId}"]`);
+                }
+                
+                if (!videoElement) {
+                    videoElement = localVideoref.current;
+                }
+
+                if (videoElement) {
+                    await videoElement.requestPictureInPicture();
+                } else {
+                    handleShowToast("No video available for PiP", "error");
+                }
+            }
+        } catch (error) {
+            console.error("PiP Error:", error);
+            handleShowToast("Picture-in-Picture is not supported or failed", "error");
         }
     };
 
@@ -954,8 +1005,18 @@ export default function VideoMeetComponent() {
         <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgb(99,102,241)]"></span>
         <span className="text-xs font-bold tracking-widest text-indigo-300"><CallTimer startTime={callStartTime} /></span>
       </div>
-      <div className="bg-white/5 px-3 py-1.5 rounded-full text-xs font-medium border border-white/10 ml-2 text-gray-300 hidden sm:block">
-        M-ID: {meetingId}
+      <div className="bg-white/5 pl-3 pr-1 py-1 rounded-full text-[10px] sm:text-xs font-medium border border-white/10 ml-1 sm:ml-2 text-gray-300 flex items-center gap-1 sm:gap-2">
+        <span className="truncate max-w-[70px] sm:max-w-[120px]">M-ID: {meetingId}</span>
+        <button 
+            onClick={() => {
+                navigator.clipboard.writeText(meetingId);
+                handleShowToast("Meeting ID copied to clipboard", "success");
+            }}
+            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-indigo-400 flex items-center justify-center"
+            title="Copy Meeting ID"
+        >
+            <ContentCopyIcon style={{ fontSize: '14px' }} />
+        </button>
       </div>
     </div>
     
@@ -1076,6 +1137,25 @@ export default function VideoMeetComponent() {
               <p className="text-xl md:text-2xl font-medium leading-relaxed drop-shadow-md">{captionText.text}</p>
           </div>
       )}
+
+      {/* Floating Reactions Overlay */}
+      <div className="absolute inset-0 pointer-events-none z-[60] overflow-hidden">
+          <AnimatePresence>
+              {floatingReactions.map((reaction) => (
+                  <motion.div
+                      key={reaction.id}
+                      initial={{ opacity: 0, y: 100, x: `${reaction.left}vw`, scale: 0.5 }}
+                      animate={{ opacity: [0, 1, 1, 0], y: -500, x: `${reaction.left + (Math.random() * 10 - 5)}vw`, scale: [0.5, 1.5, 1.5, 1] }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 3, ease: "easeOut" }}
+                      className="absolute bottom-20 flex flex-col items-center"
+                  >
+                      <span className="text-4xl md:text-6xl drop-shadow-2xl filter">{reaction.emoji}</span>
+                      <span className="text-[10px] font-bold text-white bg-black/50 px-2 py-0.5 rounded-full mt-1 backdrop-blur-md">{reaction.username}</span>
+                  </motion.div>
+              ))}
+          </AnimatePresence>
+      </div>
     </div>
     
     {/* Right Side Panel (Chat & Participants) */}
@@ -1150,6 +1230,35 @@ export default function VideoMeetComponent() {
       <button onClick={() => setScreen(!screen)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${screen ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
         <ScreenShareIcon />
       </button>
+
+      {/* PiP Mode */}
+      <button onClick={handlePiP} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
+         <PictureInPictureAltIcon />
+      </button>
+
+      {/* Reactions Menu */}
+      <div className="relative hidden sm:block">
+          <button onClick={() => setShowReactionsMenu(!showReactionsMenu)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg ${showReactionsMenu ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
+              <MoodIcon />
+          </button>
+          
+          <AnimatePresence>
+              {showReactionsMenu && (
+                  <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface/90 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl"
+                  >
+                      {['👍', '❤️', '😂', '🎉', '😮'].map(emoji => (
+                          <button key={emoji} onClick={() => handleReaction(emoji)} className="w-10 h-10 text-xl flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors hover:scale-110 active:scale-95">
+                              {emoji}
+                          </button>
+                      ))}
+                  </motion.div>
+              )}
+          </AnimatePresence>
+      </div>
       
       {/* Reactions (Raise Hand mapped) */}
       <button onClick={handleRaiseHand} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
