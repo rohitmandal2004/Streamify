@@ -34,6 +34,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import OptionsDrawer from '../components/OptionsDrawer';
 import SettingsModal from '../components/SettingsModal'; // Import SettingsModal
+import Toast from '../components/Toast';
 
 import { Component as EtheralShadow } from '../components/ui/etheral-shadow';
 import CallTimer from '../components/CallTimer';
@@ -115,6 +116,13 @@ export default function VideoMeetComponent() {
     const [activeReportTarget, setActiveReportTarget] = useState(null); // { socketId, username }
 
     const [chatInput, setChatInput] = useState('');
+    
+    const [toastConfig, setToastConfig] = useState({ open: false, message: '', type: 'info' });
+    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    const handleShowToast = (message, type = 'info') => {
+        setToastConfig({ open: true, message, type });
+    };
 
     // --- Init & Permissions ---
     useEffect(() => {
@@ -535,7 +543,7 @@ export default function VideoMeetComponent() {
                 if (videoDevices.length > 1) {
                     // Just try getting the second one if we are currently on the first, etc. 
                     // Simplified: just alert user for now if direct switch fails.
-                    alert("Could not switch camera. Ensure you have permissions.");
+                    handleShowToast("Could not switch camera. Ensure you have permissions.", "error");
                 }
             } catch (e) { }
         }
@@ -554,12 +562,12 @@ export default function VideoMeetComponent() {
                         if (e.name === 'NotAllowedError') {
                             // User denied permission
                         } else {
-                            alert("Screen sharing functionality is often limited or not supported on mobile browsers or this specific device.");
+                            handleShowToast("Screen sharing functionality is often limited or not supported on mobile browsers or this specific device.", "warning");
                         }
                     })
             } else {
                 setScreen(false);
-                alert("Screen sharing is not supported on this device/browser.");
+                handleShowToast("Screen sharing is not supported on this device/browser.", "error");
             }
         } else {
             // Stop screen share
@@ -651,7 +659,7 @@ export default function VideoMeetComponent() {
         console.log("Requesting mute for:", targetSocketId);
         socketRef.current.emit('mute-user', targetSocketId);
         setActiveMenu(null);
-        alert("Mute command sent.");
+        handleShowToast("Mute command sent.", "success");
     }
 
     const handleAdmitUser = (socketId) => {
@@ -723,7 +731,7 @@ export default function VideoMeetComponent() {
 
         } catch (err) {
             console.error("Error starting recording:", err);
-            alert("Could not start recording. Permission denied or not supported.");
+            handleShowToast("Could not start recording. Permission denied or not supported.", "error");
         }
     };
 
@@ -1152,9 +1160,18 @@ export default function VideoMeetComponent() {
               handleStartRecording();
           }
       }}
+      isMobile={isMobile}
+      onShowToast={handleShowToast}
       waitingList={waitingList}
       isHost={isHost}
       onAdmit={handleAdmitUser}
+  />
+  
+  <Toast 
+      open={toastConfig.open} 
+      message={toastConfig.message} 
+      type={toastConfig.type} 
+      onClose={() => setToastConfig({ ...toastConfig, open: false })} 
   />
   <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
 </div>

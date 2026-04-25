@@ -11,11 +11,12 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem'; // Placeholde
 import CloseIcon from '@mui/icons-material/Close';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
-const DrawerItem = ({ icon: Icon, label, onClick, active = false, activeColor = "bg-blue-600" }) => (
+const DrawerItem = ({ icon: Icon, label, onClick, active = false, activeColor = "bg-blue-600", disabled = false }) => (
     <button
         onClick={onClick}
         className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all w-full
-      ${active ? activeColor : 'bg-white/5 hover:bg-white/10'}`}
+      ${active ? activeColor : 'bg-white/5 hover:bg-white/10'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={disabled}
     >
         <div className={`p-2 rounded-full ${active ? 'bg-white/20' : 'bg-transparent'}`}>
             <Icon className="text-white" fontSize="medium" />
@@ -37,6 +38,8 @@ const OptionsDrawer = ({
     onSettings,
     onRecordToggle,
     isRecording,
+    isMobile = false,
+    onShowToast,
     waitingList = [],
     isHost = false,
     onAdmit
@@ -90,14 +93,16 @@ const OptionsDrawer = ({
                             <DrawerItem
                                 icon={ChatIcon}
                                 label="In-call messages"
-                                onClick={onChat}
+                                onClick={isMobile ? () => onShowToast("Chat is coming soon to mobile. Switch to desktop for full features.", "info") : onChat}
+                                disabled={isMobile}
                             />
 
                             <DrawerItem
                                 icon={isScreenSharing ? StopScreenShareIcon : ScreenShareIcon}
                                 label={isScreenSharing ? "Stop Sharing" : "Share Screen"}
-                                onClick={onScreenShare}
+                                onClick={isMobile ? () => onShowToast("Screen sharing is only available on desktop browsers.", "warning") : onScreenShare}
                                 active={isScreenSharing}
+                                disabled={isMobile}
                             />
 
                             <DrawerItem
@@ -115,9 +120,10 @@ const OptionsDrawer = ({
                             <DrawerItem
                                 icon={FiberManualRecordIcon}
                                 label={isRecording ? "Stop Recording" : "Record"}
-                                onClick={onRecordToggle || (() => {})}
+                                onClick={isMobile ? () => onShowToast("Screen recording is only available on desktop browsers.", "warning") : (onRecordToggle || (() => {}))}
                                 active={isRecording}
                                 activeColor="bg-red-500/20 text-red-400 border border-red-500/50"
+                                disabled={isMobile}
                             />
                             {/* Add more items to match screenshot if needed */}
                             <DrawerItem
