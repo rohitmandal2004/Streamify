@@ -798,7 +798,7 @@ export default function VideoMeetComponent() {
     // --- Render ---
     if (askForUsername) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+            <div className="fixed inset-0 h-[100dvh] flex items-center justify-center p-4 overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <EtheralShadow
                         color="rgba(128, 128, 128, 1)"
@@ -828,7 +828,7 @@ export default function VideoMeetComponent() {
 
     if (isWaiting) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden text-center text-white">
+            <div className="fixed inset-0 h-[100dvh] flex flex-col items-center justify-center p-4 overflow-hidden text-center text-white">
                 <div className="absolute inset-0 z-0">
                     <EtheralShadow
                         color="rgba(128, 128, 128, 1)"
@@ -869,10 +869,10 @@ export default function VideoMeetComponent() {
     const remainingVideos = videos.length > 0 ? videos.slice(1) : [];
 
     return (
-<div className="bg-black text-white overflow-hidden h-screen flex flex-col font-sans">
+<div className="bg-black text-white overflow-hidden h-[100dvh] flex flex-col font-sans">
   
   {/* Top Bar Component */}
-  <header className="w-full top-0 sticky z-50 bg-black/40 backdrop-blur-xl flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-white/10">
+  <header className="w-full z-50 bg-black/40 backdrop-blur-xl flex justify-between items-center px-3 md:px-6 py-2 md:py-3 border-b border-white/10 flex-shrink-0">
     <div className="flex items-center gap-4">
       <Logo size="sm" clickable={false} />
       <div className="h-6 w-[1px] bg-white/10 hidden md:block"></div>
@@ -915,16 +915,16 @@ export default function VideoMeetComponent() {
     </div>
   </header>
   
-  <main className="flex-1 flex overflow-hidden p-4 md:p-6 gap-6 relative">
+  <main className="flex-1 flex overflow-hidden p-2 md:p-4 gap-2 md:gap-4 relative min-h-0">
     {/* Abstract Background Elements */}
     <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -mr-48 -mt-48 pointer-events-none"></div>
     <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -ml-48 -mb-48 pointer-events-none"></div>
 
     {/* Video Grid */}
-    <div className="flex-1 grid grid-cols-12 grid-rows-6 gap-4 h-full relative z-10">
+    <div className="flex-1 flex flex-col md:grid md:grid-cols-12 md:grid-rows-6 gap-2 md:gap-4 h-full relative z-10 min-h-0">
       
       {/* Active Speaker */}
-      <div className="col-span-12 md:col-span-8 row-span-4 md:row-span-6 relative rounded-2xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group">
+      <div className="flex-1 md:col-span-8 md:row-span-6 relative rounded-xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group min-h-0">
           {activeVideo ? (
               <video data-socket={activeVideo.socketId} ref={ref => { if (ref && activeVideo.stream) ref.srcObject = activeVideo.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
           ) : (
@@ -947,10 +947,10 @@ export default function VideoMeetComponent() {
       </div>
 
       {/* Side / Bottom Videos */}
-      <div className="col-span-12 md:col-span-4 row-span-2 md:row-span-6 flex md:flex-col gap-4 overflow-x-auto md:overflow-y-auto no-scrollbar">
+      <div className="h-20 md:h-auto md:col-span-4 md:row-span-6 flex md:flex-col gap-2 md:gap-4 overflow-x-auto md:overflow-y-auto no-scrollbar flex-shrink-0">
         {/* Self video if active is not local */}
         {activeVideo && (
-            <div className="w-40 md:w-full flex-shrink-0 relative rounded-xl md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group aspect-video md:aspect-auto md:flex-1 w-full max-w-[200px] md:max-w-none">
+            <div className="w-28 h-20 md:w-full md:h-auto flex-shrink-0 relative rounded-lg md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group md:aspect-auto md:flex-1 md:max-w-none">
                 <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity mirror-mode" />
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
                     <span className="text-[10px] font-bold text-white tracking-wide">You {raisedHands['local'] && "✋"}</span>
@@ -961,7 +961,7 @@ export default function VideoMeetComponent() {
 
         {/* Remote Videos */}
         {remainingVideos.slice(0, 4).map((v, i) => (
-            <div key={v.socketId} className="w-40 md:w-full flex-shrink-0 relative rounded-xl md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group aspect-video md:aspect-auto md:flex-1 w-full max-w-[200px] md:max-w-none">
+            <div key={v.socketId} className="w-28 h-20 md:w-full md:h-auto flex-shrink-0 relative rounded-lg md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group md:aspect-auto md:flex-1 md:max-w-none">
               <video data-socket={v.socketId} ref={ref => { if (ref && v.stream) ref.srcObject = v.stream; }} autoPlay playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
               <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
                 <span className="text-[10px] font-bold text-white tracking-wide">{v.username} {raisedHands[v.socketId] && "✋"}</span>
@@ -1053,34 +1053,34 @@ export default function VideoMeetComponent() {
   </main>
   
   {/* Bottom Control Bar */}
-  <footer className="w-full bg-black/40 backdrop-blur-xl px-4 md:px-8 py-4 sm:py-6 flex items-center justify-center md:justify-between border-t border-white/10 z-50">
+  <footer className="w-full bg-black/40 backdrop-blur-xl px-2 md:px-8 py-2 md:py-4 flex items-center justify-center md:justify-between border-t border-white/10 z-50 flex-shrink-0">
     <div className="hidden md:flex items-center gap-2 min-w-[200px]">
        <span className="text-xs font-medium text-gray-400">Meeting secured</span>
     </div>
     
-    <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
+    <div className="flex items-center gap-2 md:gap-3 justify-center flex-nowrap">
       {/* Mic Control */}
-      <button onClick={handleAudio} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl text-white transition-all active:scale-95 shadow-lg ${!audio ? 'bg-red-500/20 border border-red-500/50 text-red-500 hover:bg-red-500/30' : 'bg-surface/50 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50'}`}>
+      <button onClick={handleAudio} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl text-white transition-all active:scale-95 shadow-lg ${!audio ? 'bg-red-500/20 border border-red-500/50 text-red-500 hover:bg-red-500/30' : 'bg-surface/50 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50'}`}>
         {!audio ? <MicOffIcon /> : <MicIcon />}
       </button>
       
       {/* Video Control */}
-      <button onClick={handleVideo} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl text-white transition-all active:scale-95 shadow-lg ${!video ? 'bg-red-500/20 border border-red-500/50 text-red-500 hover:bg-red-500/30' : 'bg-surface/50 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50'}`}>
+      <button onClick={handleVideo} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl text-white transition-all active:scale-95 shadow-lg ${!video ? 'bg-red-500/20 border border-red-500/50 text-red-500 hover:bg-red-500/30' : 'bg-surface/50 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50'}`}>
         {!video ? <VideocamOffIcon /> : <VideocamIcon />}
       </button>
 
       {/* Screen Share */}
-      <button onClick={() => setScreen(!screen)} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg ${screen ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
+      <button onClick={() => setScreen(!screen)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${screen ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
         <ScreenShareIcon />
       </button>
       
       {/* Reactions (Raise Hand mapped) */}
-      <button onClick={handleRaiseHand} className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg">
+      <button onClick={handleRaiseHand} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
         <PanToolIcon />
       </button>
       
       {/* More / Settings */}
-      <button onClick={() => setSettingsOpen(true)} className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg">
+      <button onClick={() => setSettingsOpen(true)} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
          <SettingsIcon />
       </button>
 
@@ -1095,7 +1095,7 @@ export default function VideoMeetComponent() {
       </button>
       
       {/* Leave Button */}
-      <button onClick={handleEndCall} className="h-12 sm:h-14 px-6 sm:px-8 flex items-center justify-center rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all active:scale-95 gap-2 shadow-[0_0_20px_rgba(220,38,38,0.3)] ml-2 border border-red-500/50">
+      <button onClick={handleEndCall} className="h-11 md:h-14 px-5 md:px-8 flex items-center justify-center rounded-xl md:rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all active:scale-95 gap-2 shadow-[0_0_20px_rgba(220,38,38,0.3)] ml-1 md:ml-2 border border-red-500/50">
         <CallEndIcon />
 
         <span className="hidden sm:inline">Leave</span>
@@ -1105,9 +1105,6 @@ export default function VideoMeetComponent() {
     <div className="hidden md:flex items-center gap-3 min-w-[200px] justify-end">
       <button className="w-10 h-10 rounded-full bg-surface/50 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors" onClick={() => setShowOptionsDrawer(true)}>
         <GroupIcon fontSize="small" />
-      </button>
-      <button className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/50 flex items-center justify-center text-indigo-300 hover:bg-indigo-500 hover:text-white transition-colors lg:hidden">
-        <ChatBubbleIcon fontSize="small" />
       </button>
     </div>
   </footer>

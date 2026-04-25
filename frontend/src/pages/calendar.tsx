@@ -10,6 +10,7 @@ import withAuth from '../utils/withAuth';
 import { Button } from '../components/ui/button';
 import { Calendar } from '../components/ui/calendar';
 import { Card, CardContent, CardFooter } from '../components/ui/card';
+import { Skeleton } from '../components/ui/skeleton';
 
 function CalendarPage() {
     const context = useContext(AuthContext) as any;
@@ -33,10 +34,12 @@ function CalendarPage() {
     const [isBooking, setIsBooking] = useState(false);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [loadingMeetings, setLoadingMeetings] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
         if (context?.getScheduledMeetings) {
+            setLoadingMeetings(true);
             context.getScheduledMeetings().then((meetings: any) => {
                 if (meetings) {
                     const formattedMeetings = meetings.map((m: any) => {
@@ -52,7 +55,9 @@ function CalendarPage() {
                     });
                     setBookedMeetings(formattedMeetings);
                 }
-            });
+            }).finally(() => setLoadingMeetings(false));
+        } else {
+            setLoadingMeetings(false);
         }
     }, [context]);
 
@@ -186,14 +191,14 @@ function CalendarPage() {
     return (
         <div className={cn("flex flex-col md:flex-row bg-[#0B0D17] w-full flex-1 overflow-hidden h-screen text-white")}>
             <Sidebar open={open} setOpen={setOpen}>
-                <SidebarBody className="justify-between gap-10 bg-black/40 backdrop-blur-xl border-r border-white/10 relative z-50">
+                <SidebarBody className="justify-between gap-10 bg-[#0a0a0f]/80 backdrop-blur-2xl border-r border-white/[0.06] relative z-50">
                     <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
                         <div className="flex items-center space-x-2 py-1 pr-6 relative z-20 min-w-max">
                             <Logo size="sm" clickable={true} />
                         </div>
                         <div className="mt-8 flex flex-col gap-2">
                             {links.map((link, idx) => (
-                                <SidebarLink key={idx} link={link} className="[&>span]:text-gray-300 hover:[&>span]:text-white [&>svg]:text-gray-300 hover:[&>svg]:text-white" />
+                                <SidebarLink key={idx} link={link} />
                             ))}
                         </div>
                     </div>
@@ -211,7 +216,7 @@ function CalendarPage() {
                                     </Avatar>
                                 ),
                             }}
-                            className="[&>span]:text-gray-300 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                            className="border-t border-white/[0.04] pt-4 mt-2"
                         />
                     </div>
                 </SidebarBody>
@@ -307,7 +312,33 @@ function CalendarPage() {
                     </div>
                     </div>
                     {/* Booked Meetings Section - Modern Premium Cards */}
-                    {bookedMeetings.length > 0 && (
+                    {loadingMeetings ? (
+                        <div className="mt-16 mb-20">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-white/[0.02] min-h-[280px] flex flex-col justify-end">
+                                        <div className="relative z-10 p-6 space-y-4">
+                                            <div className="flex justify-between items-start">
+                                                <Skeleton className="h-6 w-20 rounded-full" />
+                                                <div className="flex gap-2">
+                                                    <Skeleton className="w-8 h-8 rounded-xl" />
+                                                    <Skeleton className="w-8 h-8 rounded-xl" />
+                                                </div>
+                                            </div>
+                                            <div className="pt-8 space-y-3">
+                                                <Skeleton className="h-7 w-48" />
+                                                <Skeleton className="h-4 w-36" />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Skeleton className="h-12 flex-1 rounded-xl" />
+                                                <Skeleton className="h-12 w-14 rounded-xl" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : bookedMeetings.length > 0 && (
                         <div className="mt-16 mb-20">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {bookedMeetings
@@ -429,4 +460,4 @@ function CalendarPage() {
     );
 }
 
-export default withAuth(CalendarPage);
+export default withAuth(CalendarPage, 'calendar');

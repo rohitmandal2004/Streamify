@@ -182,4 +182,4 @@ function ProfilePage() {
     );
 }
 
-export default withAuth(ProfilePage);
+export default withAuth(ProfilePage, 'profile');

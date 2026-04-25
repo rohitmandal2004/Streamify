@@ -59,14 +59,14 @@ function History() {
   return (
     <div className={cn("flex flex-col md:flex-row bg-[#000000] w-full flex-1 overflow-hidden h-screen text-white")}>
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="justify-between gap-10 bg-black/40 backdrop-blur-xl border-r border-white/10 relative z-50">
+        <SidebarBody className="justify-between gap-10 bg-[#0a0a0f]/80 backdrop-blur-2xl border-r border-white/[0.06] relative z-50">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             <div className="flex items-center space-x-2 py-1 pr-6 relative z-20 min-w-max">
               <Logo size="sm" clickable={true} />
             </div>
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} className="[&>span]:text-gray-300 hover:[&>span]:text-white [&>svg]:text-gray-300 hover:[&>svg]:text-white" />
+                <SidebarLink key={idx} link={link} />
               ))}
             </div>
           </div>
@@ -84,7 +84,7 @@ function History() {
                   </Avatar>
                 ),
               }}
-              className="[&>span]:text-gray-300 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+              className="border-t border-white/[0.04] pt-4 mt-2"
             />
           </div>
         </SidebarBody>
@@ -241,4 +241,4 @@ function History() {
   );
 }
 
-export default withAuth(History);
+export default withAuth(History, 'history');

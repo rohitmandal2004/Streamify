@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "../../lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
@@ -90,12 +90,13 @@ export const DesktopSidebar = ({
     return (
         <motion.div
             className={cn(
-                "h-full px-4 py-4 hidden md:flex md:flex-col bg-neutral-100 dark:bg-neutral-800 w-[300px] flex-shrink-0",
+                "h-full px-4 py-4 hidden md:flex md:flex-col w-[280px] flex-shrink-0",
                 className
             )}
             animate={{
-                width: animate ? (open ? "300px" : "60px") : "300px",
+                width: animate ? (open ? "280px" : "68px") : "280px",
             }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             onMouseEnter={() => setOpen(true)}
             onMouseLeave={() => setOpen(false)}
             {...props}
@@ -126,14 +127,13 @@ export const MobileSidebar = ({
     ...props
 }: React.ComponentProps<"div">) => {
     // Extract links and filter out the user profile link for mobile 
-    // (since it takes up space and is already shown in the top navbar on some pages)
     const links = extractLinks(children).filter(
         (link) => (link.props as any)?.link?.href !== "/profile"
     );
     
     return (
         <div
-            className="h-[4.5rem] flex flex-row md:hidden items-center justify-around bg-[#000000]/90 backdrop-blur-xl border-t border-white/10 w-full text-white z-[100] fixed bottom-0 left-0 right-0 px-2 safe-area-bottom"
+            className="h-[4.5rem] flex flex-row md:hidden items-center justify-around bg-[#0a0a0f]/95 backdrop-blur-2xl border-t border-white/[0.08] w-full text-white z-[100] fixed bottom-0 left-0 right-0 px-2 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.5)]"
             {...props}
         >
             {links.map((link, idx) => {
@@ -158,6 +158,8 @@ export const SidebarLink = ({
     props?: React.ComponentProps<typeof Link>;
 }) => {
     const { open, animate } = useSidebar();
+    const location = useLocation();
+    const isActive = link.href !== "#" && location.pathname === link.href;
 
     const handleClick = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
         if (link.onClick) {
@@ -171,21 +173,53 @@ export const SidebarLink = ({
             to={link.href}
             onClick={handleClick}
             className={cn(
-                "flex items-center justify-start gap-2 group/sidebar py-2",
+                "flex items-center gap-3 group/sidebar py-2.5 px-3 rounded-xl transition-all duration-200 relative",
+                isActive
+                    ? "bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    : "text-gray-400 hover:bg-white/[0.05] hover:text-white",
                 className
             )}
             {...props}
         >
-            {link.icon}
+            {/* Active indicator bar */}
+            {isActive && (
+                <motion.div
+                    layoutId="activeTab"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gradient-to-b from-indigo-400 to-purple-500"
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+            )}
+
+            {/* Icon wrapper */}
+            <div className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-200",
+                isActive
+                    ? "bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.15)]"
+                    : "text-gray-400 group-hover/sidebar:text-gray-200"
+            )}>
+                {link.icon}
+            </div>
+
             <motion.span
                 animate={{
                     display: animate ? (open ? "inline-block" : "none") : "inline-block",
                     opacity: animate ? (open ? 1 : 0) : 1,
                 }}
-                className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+                className={cn(
+                    "text-sm font-medium whitespace-pre inline-block !p-0 !m-0 transition-colors duration-200",
+                    isActive ? "text-white" : "text-gray-400 group-hover/sidebar:text-gray-200"
+                )}
             >
                 {link.label}
             </motion.span>
+
+            {/* Active dot for mobile */}
+            {isActive && (
+                <motion.div 
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400 md:hidden"
+                    layoutId="activeDot"
+                />
+            )}
         </Link>
     );
 };

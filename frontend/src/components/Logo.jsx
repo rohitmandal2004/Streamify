@@ -12,10 +12,10 @@ const Logo = ({
   const navigate = useNavigate();
 
   const sizes = {
-    sm: 'h-6',
-    md: 'h-8',
-    lg: 'h-12',
-    xl: 'h-16'
+    sm: 'h-8',
+    md: 'h-10',
+    lg: 'h-14',
+    xl: 'h-20'
   };
 
   const sizeConfig = sizes[size] || sizes.md;
