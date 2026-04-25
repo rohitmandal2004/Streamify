@@ -12,6 +12,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ClosedCaptionIcon from '@mui/icons-material/ClosedCaption';
 import StopIcon from '@mui/icons-material/Stop';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CloseIcon from '@mui/icons-material/Close';
 
 import ScreenShareIcon from '@mui/icons-material/ScreenShare'; // Added ScreenShareIcon if missing, and Person/MoreVert
 import PersonIcon from '@mui/icons-material/Person';
@@ -1005,12 +1006,15 @@ export default function VideoMeetComponent() {
     </div>
     
     {/* Right Side Panel (Chat & Participants) */}
-    <aside className="hidden lg:flex w-80 h-full flex-col rounded-3xl bg-surface/30 backdrop-blur-xl border border-white/10 shadow-2xl z-20 relative overflow-hidden">
-      <div className="p-5 border-b border-white/10 flex justify-between items-center bg-black/20">
+    <aside className={`${showChat ? 'absolute inset-2 sm:inset-4 z-[70] flex' : 'hidden lg:flex'} w-auto lg:w-80 h-[calc(100%-1rem)] lg:h-full flex-col rounded-2xl lg:rounded-3xl bg-surface/95 lg:bg-surface/30 backdrop-blur-3xl lg:backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden`}>
+      <div className="p-4 lg:p-5 border-b border-white/10 flex justify-between items-center bg-black/40 lg:bg-black/20">
         <h3 className="font-bold text-white text-sm tracking-wide">Meeting Chat</h3>
-        <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors" onClick={() => setShowOptionsDrawer(true)}>
-          {totalParticipants} People
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-indigo-400 font-medium">{totalParticipants} People</span>
+          <button className="lg:hidden p-1 rounded-full hover:bg-white/10 text-gray-400" onClick={() => setShowChat(false)}>
+            <CloseIcon fontSize="small" />
+          </button>
+        </div>
       </div>
       
       {/* Chat Messages */}
@@ -1121,10 +1125,7 @@ export default function VideoMeetComponent() {
       isHandRaised={!!raisedHands['local']}
       onChat={() => {
           setShowOptionsDrawer(false);
-          // In a real mobile view we'd open a chat modal, but for now we'll just toggle it or alert
-          if(window.innerWidth < 1024) {
-              alert("Chat will be available in the dedicated mobile view soon.");
-          }
+          setShowChat(true);
       }} 
       onScreenShare={() => setScreen(!screen)}
       isScreenSharing={screen}
@@ -1141,6 +1142,15 @@ export default function VideoMeetComponent() {
       onSettings={() => {
           setShowOptionsDrawer(false);
           setSettingsOpen(true);
+      }}
+      isRecording={isRecording}
+      onRecordToggle={() => {
+          setShowOptionsDrawer(false);
+          if (isRecording) {
+              handleStopRecording();
+          } else {
+              handleStartRecording();
+          }
       }}
       waitingList={waitingList}
       isHost={isHost}

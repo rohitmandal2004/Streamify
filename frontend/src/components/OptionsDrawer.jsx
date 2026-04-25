@@ -9,6 +9,7 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import SettingsIcon from '@mui/icons-material/Settings'; // Placeholder for settings
 import ReportProblemIcon from '@mui/icons-material/ReportProblem'; // Placeholder
 import CloseIcon from '@mui/icons-material/Close';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 const DrawerItem = ({ icon: Icon, label, onClick, active = false, activeColor = "bg-blue-600" }) => (
     <button
@@ -34,6 +35,8 @@ const OptionsDrawer = ({
     onFullScreen,
     isFullScreen,
     onSettings,
+    onRecordToggle,
+    isRecording,
     waitingList = [],
     isHost = false,
     onAdmit
@@ -108,6 +111,13 @@ const OptionsDrawer = ({
                                 icon={SettingsIcon}
                                 label="Settings"
                                 onClick={onSettings || (() => {})}
+                            />
+                            <DrawerItem
+                                icon={FiberManualRecordIcon}
+                                label={isRecording ? "Stop Recording" : "Record"}
+                                onClick={onRecordToggle || (() => {})}
+                                active={isRecording}
+                                activeColor="bg-red-500/20 text-red-400 border border-red-500/50"
                             />
                             {/* Add more items to match screenshot if needed */}
                             <DrawerItem
