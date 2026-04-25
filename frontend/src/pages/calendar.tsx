@@ -44,7 +44,8 @@ function CalendarPage() {
                             name: m.meeting_name,
                             date: d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" }),
                             time: d.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: false }),
-                            link: `/${m.meeting_code}`
+                            link: `/${m.meeting_code}`,
+                            rawDate: m.scheduled_time
                         };
                     });
                     setBookedMeetings(formattedMeetings);
@@ -96,7 +97,8 @@ function CalendarPage() {
                     name: meetingDetails.meetingName,
                     date: date.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" }),
                     time: selectedTime,
-                    link: `/${meetingId}`
+                    link: `/${meetingId}`,
+                    rawDate: scheduledDate.toISOString()
                 };
                 setBookedMeetings([...bookedMeetings, newMeeting]);
                 setMeetingName("");
@@ -245,39 +247,75 @@ function CalendarPage() {
                         </CardFooter>
                     </Card>
 
-                    {/* Booked Meetings Section */}
+                    {/* Booked Meetings Section - Modern Premium Cards */}
                     {bookedMeetings.length > 0 && (
-                        <div className="mt-12">
-                            <h2 className="text-2xl font-bold mb-4">Your Booked Meetings</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {bookedMeetings.map((meeting, index) => (
-                                    <div key={index} className="p-5 rounded-lg border border-white/10 bg-surface/50 backdrop-blur-xl flex flex-col gap-3">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-xl font-semibold text-white truncate pr-2">{meeting.name}</h3>
-                                            <span className="text-xs font-mono bg-white/10 text-gray-300 px-2 py-1 rounded">ID: {meeting.id}</span>
-                                        </div>
-                                        <div className="text-sm text-gray-300 flex items-center gap-2">
-                                            <CalendarDays className="h-4 w-4" />
-                                            {meeting.date} at {meeting.time}
-                                        </div>
-                                        <div className="mt-4 flex gap-2 w-full">
-                                            <Button
-                                                onClick={() => navigator.clipboard.writeText(`${window.location.origin}${meeting.link}`)}
-                                                className="flex-1 bg-white/10 hover:bg-white/20 text-white border-0 text-sm py-1 h-auto"
-                                                variant="outline"
+                        <div className="mt-16 mb-20">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {bookedMeetings
+                                    .filter((meeting) => {
+                                        // Show only upcoming meetings based on the raw date
+                                        if (!meeting.rawDate) return true; // fallback
+                                        const meetingDate = new Date(meeting.rawDate);
+                                        return meetingDate > new Date();
+                                    })
+                                    .map((meeting, index) => {
+                                        const bgImages = [
+                                            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
+                                            "https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=2560&auto=format&fit=crop",
+                                            "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2670&auto=format&fit=crop",
+                                            "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=2560&auto=format&fit=crop"
+                                        ];
+                                        const bgImage = bgImages[index % bgImages.length];
+
+                                        return (
+                                            <div 
+                                                key={index} 
+                                                className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-black/50 shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:shadow-indigo-500/30 min-h-[280px] flex flex-col justify-end"
                                             >
-                                                Copy Link
-                                            </Button>
-                                            <Button
-                                                onClick={() => navigate(meeting.link)}
-                                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white border-0 text-sm py-1 h-auto"
-                                                variant="outline"
-                                            >
-                                                Join Meeting
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                                                {/* Background Image with slight blur */}
+                                                <div 
+                                                    className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-50 group-hover:opacity-70 blur-[2px] group-hover:blur-0"
+                                                    style={{ backgroundImage: `url(${bgImage})` }}
+                                                />
+                                                
+                                                {/* Dimmed Gradient Overlay for readability */}
+                                                <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#0B0D17] via-[#0B0D17]/80 to-transparent" />
+                                                
+                                                {/* Content */}
+                                                <div className="relative z-10 p-6 flex flex-col h-full justify-between">
+                                                    {/* Top row: Badge */}
+                                                    <div className="flex justify-between items-start mb-12">
+                                                        <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/20 shadow-sm">
+                                                            <span className="text-xs font-semibold tracking-wider text-white uppercase flex items-center gap-1.5">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                                                                Upcoming
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Bottom content */}
+                                                    <div className="space-y-5">
+                                                        <div>
+                                                            <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1 group-hover:text-indigo-200 transition-colors drop-shadow-md">
+                                                                {meeting.name}
+                                                            </h3>
+                                                            <p className="text-sm text-gray-200 font-medium flex items-center gap-1.5 drop-shadow">
+                                                                <CalendarDays className="h-4 w-4 opacity-80" />
+                                                                {meeting.date} • {meeting.time}
+                                                            </p>
+                                                        </div>
+                                                        
+                                                        <Button
+                                                            onClick={() => navigate(meeting.link)}
+                                                            className="w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-6 rounded-xl font-semibold text-base transition-all duration-300 group-hover:bg-indigo-600 group-hover:border-indigo-500 group-hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
+                                                        >
+                                                            Join Meeting
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                             </div>
                         </div>
                     )}
