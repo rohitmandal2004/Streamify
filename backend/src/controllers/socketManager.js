@@ -9,6 +9,7 @@ import { Server } from "socket.io"
 	let roomHosts = {} // roomPath -> socketId (The Host)
 	let waitingRoom = {} // roomPath -> [socketIds]
 	let bannedUsers = {} // roomPath -> [strings (username or IP or socketId)] - simplistic ban list
+	let roomSettings = {} // roomPath -> { isLocked: false, muteAllOnEntry: false, waitingRoomEnabled: true }
 
 	export const connectToSocket = (server) => {
 		const io = new Server(server, {
@@ -36,6 +37,7 @@ import { Server } from "socket.io"
 				if (connections[path] === undefined) {
 					connections[path] = []
 					waitingRoom[path] = []
+					roomSettings[path] = { isLocked: false, muteAllOnEntry: false, waitingRoomEnabled: true }
 				}
 
 				// Check if room has a host
@@ -47,18 +49,34 @@ import { Server } from "socket.io"
 					socket.emit("listen-monitor", true); // Reusing/abusing this, or better emit 'you-are-host'
 					socket.emit("host-status", true);
 				} else {
-					// Host exists, put in waiting room
-					waitingRoom[path].push(socket.id);
-					userNames[socket.id] = username; // Store name so host knows who is waiting
-					
-					// Notify Host
-					io.to(roomHosts[path]).emit("waiting-list", {
-						socketId: socket.id,
-						username: username
-					});
-					
-					// Notify User they are waiting
-					socket.emit("room-status", "WAITING");
+					// Check if room is locked
+					if (roomSettings[path].isLocked) {
+						socket.emit("kicked"); // Treat as kicked or "room-locked"
+						return;
+					}
+
+					if (roomSettings[path].waitingRoomEnabled) {
+						// Put in waiting room
+						waitingRoom[path].push(socket.id);
+						userNames[socket.id] = username; // Store name so host knows who is waiting
+						
+						// Notify Host
+						io.to(roomHosts[path]).emit("waiting-list", {
+							socketId: socket.id,
+							username: username
+						});
+						
+						// Notify User they are waiting
+						socket.emit("room-status", "WAITING");
+					} else {
+						// Join directly
+						joinRoom(socket, path, username);
+						
+						// Apply mute on entry if enabled
+						if (roomSettings[path].muteAllOnEntry) {
+							socket.emit("muted-by-host");
+						}
+					}
 				}
 			})
 
@@ -240,6 +258,17 @@ import { Server } from "socket.io"
 
 			socket.on("mute-user", (targetSocketId) => {
 				io.to(targetSocketId).emit("muted-by-host");
+			})
+
+			socket.on("update-meeting-settings", (newSettings) => {
+				const roomPath = Object.keys(roomHosts).find(key => roomHosts[key] === socket.id);
+				if (roomPath) {
+					roomSettings[roomPath] = { ...roomSettings[roomPath], ...newSettings };
+					// Broadcast updated settings to all participants
+					connections[roomPath].forEach(elem => {
+						io.to(elem).emit("meeting-settings-updated", roomSettings[roomPath]);
+					});
+				}
 			})
 
 			socket.on("disconnect", () => {

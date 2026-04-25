@@ -90,11 +90,11 @@ export const DesktopSidebar = ({
     return (
         <motion.div
             className={cn(
-                "h-full px-4 py-4 hidden md:flex md:flex-col w-[280px] flex-shrink-0",
+                "h-full px-2 md:px-4 py-4 hidden md:flex md:flex-col flex-shrink-0",
                 className
             )}
             animate={{
-                width: animate ? (open ? "280px" : "68px") : "280px",
+                width: animate ? (open ? "280px" : "80px") : "280px",
             }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             onMouseEnter={() => setOpen(true)}
@@ -173,7 +173,7 @@ export const SidebarLink = ({
             to={link.href}
             onClick={handleClick}
             className={cn(
-                "flex items-center gap-3 group/sidebar py-2.5 px-3 rounded-xl transition-all duration-200 relative",
+                "flex items-center gap-3 group/sidebar py-2.5 px-2 rounded-xl transition-all duration-200 relative",
                 isActive
                     ? "bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                     : "text-gray-400 hover:bg-white/[0.05] hover:text-white",

@@ -5,10 +5,27 @@ import CloseIcon from '@mui/icons-material/Close';
 import MicIcon from '@mui/icons-material/Mic';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import SecurityIcon from '@mui/icons-material/Security';
+import SettingsIcon from '@mui/icons-material/Settings';
 import Button from './Button';
 import { AuthContext } from '../contexts/AuthContext';
 
-const SettingsModal = ({ isOpen, onClose }) => {
+const ToggleSwitch = ({ label, description, checked, onChange }) => (
+    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+        <div>
+            <h3 className="text-sm font-medium text-white">{label}</h3>
+            {description && <p className="text-xs text-gray-400 mt-1">{description}</p>}
+        </div>
+        <button
+            onClick={() => onChange(!checked)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-indigo-500' : 'bg-gray-600'}`}
+        >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+    </div>
+);
+
+const SettingsModal = ({ isOpen, onClose, isHost = false, meetingSettings = {}, onMeetingSettingsChange, onLocalSettingsSave }) => {
     const { userData } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('audio');
     const [devices, setDevices] = useState({
@@ -20,7 +37,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
         audioInputId: localStorage.getItem('audioInputId') || 'default',
         audioOutputId: localStorage.getItem('audioOutputId') || 'default',
         videoInputId: localStorage.getItem('videoInputId') || 'default',
-        videoQuality: localStorage.getItem('videoQuality') || '720p'
+        videoQuality: localStorage.getItem('videoQuality') || '720p',
+        noiseSuppression: localStorage.getItem('noiseSuppression') !== 'false',
+        mirrorVideo: localStorage.getItem('mirrorVideo') !== 'false',
+        lowDataMode: localStorage.getItem('lowDataMode') === 'true',
+        closedCaptionsDefault: localStorage.getItem('closedCaptionsDefault') === 'true'
     });
 
     useEffect(() => {
@@ -50,6 +71,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
         localStorage.setItem('audioOutputId', settings.audioOutputId);
         localStorage.setItem('videoInputId', settings.videoInputId);
         localStorage.setItem('videoQuality', settings.videoQuality);
+        localStorage.setItem('noiseSuppression', settings.noiseSuppression);
+        localStorage.setItem('mirrorVideo', settings.mirrorVideo);
+        localStorage.setItem('lowDataMode', settings.lowDataMode);
+        localStorage.setItem('closedCaptionsDefault', settings.closedCaptionsDefault);
+        if(onLocalSettingsSave) onLocalSettingsSave(settings);
         onClose();
     };
 
@@ -100,11 +126,27 @@ const SettingsModal = ({ isOpen, onClose }) => {
                             </button>
                             <button
                                 onClick={() => setActiveTab('video')}
-                                className={`flex-1 sm:w-full flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'video' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5'
+                                className={`flex-1 sm:w-full flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 py-3 rounded-xl mb-0 sm:mb-1 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'video' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5'
                                     }`}
                             >
                                 <VideocamIcon fontSize="small" /> Video
                             </button>
+                            <button
+                                onClick={() => setActiveTab('general')}
+                                className={`flex-1 sm:w-full flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 py-3 rounded-xl mb-0 sm:mb-1 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'general' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5'
+                                    }`}
+                            >
+                                <SettingsIcon fontSize="small" /> General
+                            </button>
+                            {isHost && (
+                                <button
+                                    onClick={() => setActiveTab('host')}
+                                    className={`flex-1 sm:w-full flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'host' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5'
+                                        }`}
+                                >
+                                    <SecurityIcon fontSize="small" /> Host Controls
+                                </button>
+                            )}
                         </div>
 
                         {/* Panel */}
@@ -140,6 +182,14 @@ const SettingsModal = ({ isOpen, onClose }) => {
                                                 </option>
                                             )) : <option value="default">Default Speaker</option>}
                                         </select>
+                                    </div>
+                                    <div className="pt-4 border-t border-white/10 mt-4">
+                                        <ToggleSwitch
+                                            label="Noise Suppression"
+                                            description="Filter out background noise like typing and fans."
+                                            checked={settings.noiseSuppression}
+                                            onChange={(val) => setSettings({ ...settings, noiseSuppression: val })}
+                                        />
                                     </div>
                                 </>
                             )}
@@ -178,7 +228,55 @@ const SettingsModal = ({ isOpen, onClose }) => {
                                             ))}
                                         </div>
                                     </div>
+                                    <div className="pt-4 border-t border-white/10 mt-4">
+                                        <ToggleSwitch
+                                            label="Mirror My Video"
+                                            description="Flip the video horizontally so it feels like a mirror."
+                                            checked={settings.mirrorVideo}
+                                            onChange={(val) => setSettings({ ...settings, mirrorVideo: val })}
+                                        />
+                                    </div>
                                 </>
+                            )}
+
+                            {activeTab === 'general' && (
+                                <div className="space-y-4">
+                                    <ToggleSwitch
+                                        label="Low Data Mode"
+                                        description="Reduce video quality to save bandwidth."
+                                        checked={settings.lowDataMode}
+                                        onChange={(val) => setSettings({ ...settings, lowDataMode: val })}
+                                    />
+                                    <ToggleSwitch
+                                        label="Closed Captions Default"
+                                        description="Automatically turn on captions when joining a meeting."
+                                        checked={settings.closedCaptionsDefault}
+                                        onChange={(val) => setSettings({ ...settings, closedCaptionsDefault: val })}
+                                    />
+                                </div>
+                            )}
+
+                            {activeTab === 'host' && isHost && (
+                                <div className="space-y-4">
+                                    <ToggleSwitch
+                                        label="Lock Meeting"
+                                        description="Prevent anyone else from joining, even with the link."
+                                        checked={meetingSettings.isLocked}
+                                        onChange={(val) => onMeetingSettingsChange('isLocked', val)}
+                                    />
+                                    <ToggleSwitch
+                                        label="Mute All on Entry"
+                                        description="Automatically mute new participants when they join."
+                                        checked={meetingSettings.muteAllOnEntry}
+                                        onChange={(val) => onMeetingSettingsChange('muteAllOnEntry', val)}
+                                    />
+                                    <ToggleSwitch
+                                        label="Enable Waiting Room"
+                                        description="Require host approval for new participants."
+                                        checked={meetingSettings.waitingRoomEnabled}
+                                        onChange={(val) => onMeetingSettingsChange('waitingRoomEnabled', val)}
+                                    />
+                                </div>
                             )}
                         </div>
                     </div>

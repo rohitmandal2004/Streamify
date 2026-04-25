@@ -17,7 +17,7 @@ function CalendarPage() {
     const handleLogout = context?.handleLogout;
     const userData = context?.userData;
 
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
 
     const links = [
         { label: "Dashboard", href: "/home", icon: <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" /> },

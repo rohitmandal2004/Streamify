@@ -120,6 +120,48 @@ export default function VideoMeetComponent() {
     const [toastConfig, setToastConfig] = useState({ open: false, message: '', type: 'info' });
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
+
+    const [meetingSettings, setMeetingSettings] = useState({
+        isLocked: false,
+        muteAllOnEntry: false,
+        waitingRoomEnabled: true
+    });
+    
+    const [localSettings, setLocalSettings] = useState({
+        audioInputId: localStorage.getItem('audioInputId') || 'default',
+        audioOutputId: localStorage.getItem('audioOutputId') || 'default',
+        videoInputId: localStorage.getItem('videoInputId') || 'default',
+        videoQuality: localStorage.getItem('videoQuality') || '720p',
+        noiseSuppression: localStorage.getItem('noiseSuppression') !== 'false',
+        mirrorVideo: localStorage.getItem('mirrorVideo') !== 'false',
+        lowDataMode: localStorage.getItem('lowDataMode') === 'true',
+        closedCaptionsDefault: localStorage.getItem('closedCaptionsDefault') === 'true'
+    });
+
+    useEffect(() => {
+        if (localSettings.closedCaptionsDefault) {
+            setShowCaptions(true);
+        }
+    }, [localSettings.closedCaptionsDefault]);
+
+    const handleLocalSettingsSave = (newSettings) => {
+        setLocalSettings(newSettings);
+        // If settings changed, refresh media tracks
+        if (window.localStream) {
+            getUserMedia();
+        }
+    };
+    
+    const handleMeetingSettingsChange = (key, value) => {
+        if (!isHost) return;
+        const updatedSettings = { ...meetingSettings, [key]: value };
+        setMeetingSettings(updatedSettings);
+        if (socketRef.current) {
+            socketRef.current.emit('update-meeting-settings', { [key]: value });
+            handleShowToast(`Setting updated.`, "success");
+        }
+    };
+
     const handleShowToast = (message, type = 'info') => {
         setToastConfig({ open: true, message, type });
     };
@@ -175,9 +217,28 @@ export default function VideoMeetComponent() {
 
     let getUserMedia = () => {
         if ((video && videoAvailable) || (audio && audioAvailable)) {
+            let videoConstraints = video ? { facingMode: facingMode } : false;
+            if (videoConstraints && localSettings.videoInputId !== 'default') {
+                videoConstraints.deviceId = { exact: localSettings.videoInputId };
+            }
+            if (videoConstraints && localSettings.lowDataMode) {
+                videoConstraints.width = { ideal: 480 };
+                videoConstraints.height = { ideal: 360 };
+                videoConstraints.frameRate = { ideal: 15 };
+            }
+
+            let audioConstraints = audio ? { 
+                echoCancellation: true, 
+                noiseSuppression: localSettings.noiseSuppression, 
+                autoGainControl: true 
+            } : false;
+            if (audioConstraints && localSettings.audioInputId !== 'default') {
+                audioConstraints.deviceId = { exact: localSettings.audioInputId };
+            }
+
             navigator.mediaDevices.getUserMedia({
-                video: video ? { facingMode: facingMode } : false,
-                audio: audio ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false
+                video: videoConstraints,
+                audio: audioConstraints
             })
                 .then(getUserMediaSuccess)
                 .catch((e) => console.log(e))
@@ -294,8 +355,12 @@ export default function VideoMeetComponent() {
             // Host Actions: Kicked
             socketRef.current.on('kicked', () => {
                 console.log("Received kicked event");
-                alert("You have been kicked from the meeting by the host.");
+                alert("You have been kicked from the meeting or the room is locked.");
                 navigate('/');
+            });
+
+            socketRef.current.on('meeting-settings-updated', (newSettings) => {
+                setMeetingSettings(newSettings);
             });
 
             // Host Actions: Muted
@@ -825,7 +890,7 @@ export default function VideoMeetComponent() {
                     </div>
                     <div className="space-y-4">
                         <div className="relative aspect-video bg-black/50 rounded-xl overflow-hidden border border-white/5 shadow-inner">
-                            <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover mirror-mode" />
+                            <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} />
                         </div>
                         <Input label="Your Name" value={username} onChange={(e) => setUsername(e.target.value)} icon={PersonIcon} autoFocus />
                         <Button variant="primary" size="lg" fullWidth onClick={() => { if (username.trim()) { setAskForUsername(false); getMedia(); } }} disabled={!username.trim()}>Join Meeting</Button>
@@ -937,7 +1002,7 @@ export default function VideoMeetComponent() {
           {activeVideo ? (
               <video data-socket={activeVideo.socketId} ref={ref => { if (ref && activeVideo.stream) ref.srcObject = activeVideo.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
           ) : (
-              <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover mirror-mode" />
+              <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} />
           )}
         
         <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
@@ -960,7 +1025,7 @@ export default function VideoMeetComponent() {
         {/* Self video if active is not local */}
         {activeVideo && (
             <div className="w-28 h-20 md:w-full md:h-auto flex-shrink-0 relative rounded-lg md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group md:aspect-auto md:flex-1 md:max-w-none">
-                <video ref={localVideoref} autoPlay muted playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity mirror-mode" />
+                <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} />
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
                     <span className="text-[10px] font-bold text-white tracking-wide">You {raisedHands['local'] && "✋"}</span>
                     {!audio && <MicOffIcon fontSize="inherit" className="text-red-400" />}
@@ -1173,7 +1238,14 @@ export default function VideoMeetComponent() {
       type={toastConfig.type} 
       onClose={() => setToastConfig({ ...toastConfig, open: false })} 
   />
-  <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+  <SettingsModal 
+      isOpen={settingsOpen} 
+      onClose={() => setSettingsOpen(false)} 
+      isHost={isHost}
+      meetingSettings={meetingSettings}
+      onMeetingSettingsChange={handleMeetingSettingsChange}
+      onLocalSettingsSave={handleLocalSettingsSave}
+  />
 </div>
     );
 }

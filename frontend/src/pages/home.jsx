@@ -21,7 +21,7 @@ function HomeComponent() {
   const navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState('');
   const { userData, addToUserHistory, handleLogout } = useContext(AuthContext);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const [reviewContent, setReviewContent] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
