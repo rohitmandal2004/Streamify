@@ -33,6 +33,7 @@ const OptionsDrawer = ({
     isScreenSharing,
     onFullScreen,
     isFullScreen,
+    onSettings,
     waitingList = [],
     isHost = false,
     onAdmit
@@ -106,7 +107,7 @@ const OptionsDrawer = ({
                             <DrawerItem
                                 icon={SettingsIcon}
                                 label="Settings"
-                                onClick={() => { }}
+                                onClick={onSettings || (() => {})}
                             />
                             {/* Add more items to match screenshot if needed */}
                             <DrawerItem

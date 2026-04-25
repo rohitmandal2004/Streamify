@@ -1093,6 +1093,11 @@ export default function VideoMeetComponent() {
       <button onClick={handleToggleCaptions} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${showCaptions ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-blue-500/20 hover:border-blue-500/50 hover:text-blue-400'}`}>
          <ClosedCaptionIcon fontSize="small" />
       </button>
+
+      {/* More Options (Mobile Only) */}
+      <button onClick={() => setShowOptionsDrawer(true)} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg sm:hidden">
+         <MoreVertIcon />
+      </button>
       
       {/* Leave Button */}
       <button onClick={handleEndCall} className="h-11 md:h-14 px-5 md:px-8 flex items-center justify-center rounded-xl md:rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all active:scale-95 gap-2 shadow-[0_0_20px_rgba(220,38,38,0.3)] ml-1 md:ml-2 border border-red-500/50">
@@ -1114,7 +1119,13 @@ export default function VideoMeetComponent() {
       onClose={() => setShowOptionsDrawer(false)} 
       onRaiseHand={handleRaiseHand}
       isHandRaised={!!raisedHands['local']}
-      onChat={() => {}} 
+      onChat={() => {
+          setShowOptionsDrawer(false);
+          // In a real mobile view we'd open a chat modal, but for now we'll just toggle it or alert
+          if(window.innerWidth < 1024) {
+              alert("Chat will be available in the dedicated mobile view soon.");
+          }
+      }} 
       onScreenShare={() => setScreen(!screen)}
       isScreenSharing={screen}
       onFullScreen={() => {
@@ -1127,6 +1138,10 @@ export default function VideoMeetComponent() {
          }
       }}
       isFullScreen={isFullScreen}
+      onSettings={() => {
+          setShowOptionsDrawer(false);
+          setSettingsOpen(true);
+      }}
       waitingList={waitingList}
       isHost={isHost}
       onAdmit={handleAdmitUser}
