@@ -73,7 +73,13 @@ function CalendarPage() {
                     await context.scheduleMeeting(meetingDetails);
                 }
 
-                const backendUrl = "http://localhost:8000"; 
+                // Import the server URL defined in environment.js
+                // Add this import at the top of the file: import server from '../environment';
+                // However, doing this inline since it's just a variable. Let's fix the imports too.
+                // Wait, it's safer to just dynamically check window.location like environment.js does
+                const IS_PROD = window.location.hostname !== 'localhost';
+                const backendUrl = IS_PROD ? "https://streamifybackend-o6vn.onrender.com" : "http://localhost:8000";
+                
                 await fetch(`${backendUrl}/api/email/send-confirmation`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
