@@ -165,50 +165,53 @@ function CalendarPage() {
                 <div className="max-w-4xl mx-auto w-full">
                     <h1 className="text-4xl font-bold mb-8">Calendar & Scheduling</h1>
 
-                    {/* Ported Calendar20 component directly into the content layout */}
-                    <Card className="gap-0 p-0 border-white/10 bg-surface/50 backdrop-blur-xl text-white">
-                        <CardContent className="relative p-0 md:pr-48">
-                            <div className="p-6">
-                                <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={setDate as any}
-                                    defaultMonth={date}
-                                    disabled={bookedDates}
-                                    showOutsideDays={false}
-                                    modifiers={{
-                                        booked: bookedDates,
-                                    }}
-                                    modifiersClassNames={{
-                                        booked: "[&>button]:line-through opacity-100",
-                                    }}
-                                    className="bg-transparent p-0 [--cell-size:--spacing(10)] md:[--cell-size:--spacing(12)] text-white"
-                                    formatters={{
-                                        formatWeekdayName: (date: Date) => {
-                                            return date.toLocaleString("en-US", { weekday: "short" })
-                                        },
-                                    }}
-                                />
-                            </div>
-                            <div className="no-scrollbar inset-y-0 right-0 flex max-h-72 w-full scroll-pb-6 flex-col gap-4 overflow-y-auto border-t border-white/10 p-6 md:absolute md:max-h-none md:w-48 md:border-t-0 md:border-l">
-                                <div className="grid gap-2">
-                                    {timeSlots.map((time) => (
-                                        <Button
-                                            key={time}
-                                            variant={selectedTime === time ? "primary" : "outline"}
-                                            onClick={() => setSelectedTime(time)}
-                                            className={cn(
-                                                "w-full shadow-none",
-                                                selectedTime === time ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "border-white/10 hover:bg-white/10 bg-transparent text-gray-300 hover:text-white"
-                                            )}
-                                        >
-                                            {time}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="flex flex-col gap-4 border-t border-white/10 px-6 !py-5 md:flex-row">
+                    {/* Ported Calendar20 component directly into the content layout with Premium Styling */}
+                    <div className="relative overflow-hidden rounded-[32px] border border-white/10 shadow-2xl mb-8 group">
+                        {/* Background Image with slow zoom */}
+                        <div 
+                            className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-[20s] group-hover:scale-110 opacity-40"
+                            style={{ backgroundImage: `url(https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2629&auto=format&fit=crop)` }}
+                        />
+                        <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0B0D17]/95 via-[#0B0D17]/80 to-indigo-900/40 backdrop-blur-[20px]" />
+                        
+                        <div className="relative z-10">
+                            <Card className="gap-0 p-0 border-0 bg-transparent text-white shadow-none rounded-none">
+                                <CardContent className="relative p-0 md:pr-64">
+                                    <div className="p-8 md:p-10">
+                                        <div className="mb-6">
+                                            <h2 className="text-2xl font-bold text-white drop-shadow-md">Select Date</h2>
+                                            <p className="text-gray-300 text-sm mt-1">Pick a day for your upcoming meeting.</p>
+                                        </div>
+                                        <Calendar
+                                            mode="single"
+                                            selected={date}
+                                            onSelect={setDate as any}
+                                            defaultMonth={date}
+                                            disabled={bookedDates}
+                                            showOutsideDays={false}
+                                            className="bg-transparent p-0 [--cell-size:--spacing(10)] md:[--cell-size:--spacing(12)] text-white"
+                                        />
+                                    </div>
+                                    <div className="no-scrollbar inset-y-0 right-0 flex max-h-72 w-full scroll-pb-6 flex-col gap-3 overflow-y-auto border-t border-white/10 p-6 md:p-8 md:absolute md:max-h-none md:w-64 md:border-t-0 md:border-l bg-black/20 backdrop-blur-md">
+                                        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Available Times</h3>
+                                        <div className="grid gap-2">
+                                            {timeSlots.map((time) => (
+                                                <Button
+                                                    key={time}
+                                                    variant={selectedTime === time ? "primary" : "outline"}
+                                                    onClick={() => setSelectedTime(time)}
+                                                    className={cn(
+                                                        "w-full shadow-none transition-all duration-300 rounded-xl py-6 font-medium",
+                                                        selectedTime === time ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] border-indigo-500" : "border-white/10 hover:border-white/30 hover:bg-white/10 bg-black/30 backdrop-blur-sm text-gray-300 hover:text-white"
+                                                    )}
+                                                >
+                                                    {time}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="flex flex-col gap-6 border-t border-white/10 px-8 py-6 md:flex-row bg-black/40 backdrop-blur-xl">
                             <div className="text-sm text-gray-300">
                                 {date && selectedTime ? (
                                     <>
@@ -227,26 +230,27 @@ function CalendarPage() {
                                     <>Select a date and time for your meeting.</>
                                 )}
                             </div>
-                            <div className="flex flex-col gap-2 w-full md:w-auto md:ml-auto">
-                                <input
-                                    type="text"
-                                    placeholder="Meeting Name (optional)"
-                                    value={meetingName}
-                                    onChange={(e) => setMeetingName(e.target.value)}
-                                    className="bg-transparent border border-white/20 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 w-full md:w-48"
-                                />
-                                <Button
-                                    disabled={!date || !selectedTime}
-                                    onClick={handleBookMeeting}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border-0"
-                                    variant="outline"
-                                >
-                                    Book Meeting
-                                </Button>
-                            </div>
-                        </CardFooter>
-                    </Card>
-
+                                <div className="flex flex-col gap-3 w-full md:w-auto md:ml-auto">
+                                    <input
+                                        type="text"
+                                        placeholder="Meeting Name (optional)"
+                                        value={meetingName}
+                                        onChange={(e) => setMeetingName(e.target.value)}
+                                        className="bg-black/50 backdrop-blur-md border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full md:w-64 transition-all"
+                                    />
+                                    <Button
+                                        disabled={!date || !selectedTime}
+                                        onClick={handleBookMeeting}
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border-0 py-6 rounded-xl font-semibold shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all disabled:opacity-50 disabled:shadow-none"
+                                        variant="outline"
+                                    >
+                                        Book Meeting
+                                    </Button>
+                                </div>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                    </div>
                     {/* Booked Meetings Section - Modern Premium Cards */}
                     {bookedMeetings.length > 0 && (
                         <div className="mt-16 mb-20">

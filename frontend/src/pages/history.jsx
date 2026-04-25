@@ -165,57 +165,73 @@ function History() {
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {meetings.map((meeting, index) => (
-                  <motion.div
-                    key={index}
-                    className="group bg-surface/40 backdrop-blur-md border border-white/5 rounded-3xl p-6 hover:border-primary/30 hover:bg-surface/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                          <VideoCallIcon />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400 font-medium">Meeting Code</p>
-                          <p className="text-lg font-mono font-bold tracking-wide text-white">{meeting.meetingCode}</p>
-                        </div>
-                      </div>
-                    </div>
+                {meetings.map((meeting, index) => {
+                    const bgImages = [
+                        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
+                        "https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=2560&auto=format&fit=crop",
+                        "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2670&auto=format&fit=crop",
+                        "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=2560&auto=format&fit=crop"
+                    ];
+                    const bgImage = bgImages[index % bgImages.length];
 
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center justify-between text-sm py-2 border-b border-white/5">
-                        <span className="flex items-center gap-2 text-gray-400">
-                          <CalendarTodayIcon fontSize="small" /> Date
-                        </span>
-                        <span className="font-medium text-gray-200">{formatDate(meeting.date)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm py-2 border-b border-white/5">
-                        <span className="flex items-center gap-2 text-gray-400">
-                          <AccessTimeIcon fontSize="small" /> Time
-                        </span>
-                        <span className="font-medium text-gray-200">{formatTime(meeting.date)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm py-2 border-b border-white/5">
-                        <span className="flex items-center gap-2 text-gray-400">
-                          <AccessTimeIcon fontSize="small" /> Duration
-                        </span>
-                        <span className="font-medium text-gray-200">{meeting.duration ? `${meeting.duration} Mins` : `Unknown`}</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="secondary"
-                      fullWidth
-                      onClick={() => routeTo(`/${meeting.meetingCode}`)}
-                      className="group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-300"
-                    >
-                      Rejoin Meeting
-                    </Button>
-                  </motion.div>
-                ))}
+                    return (
+                        <motion.div 
+                            key={index} 
+                            className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-black/50 shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:shadow-indigo-500/30 min-h-[280px] flex flex-col justify-end"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                        >
+                            {/* Background Image with slight blur */}
+                            <div 
+                                className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-50 group-hover:opacity-70 blur-[2px] group-hover:blur-0"
+                                style={{ backgroundImage: `url(${bgImage})` }}
+                            />
+                            
+                            {/* Dimmed Gradient Overlay for readability */}
+                            <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#0B0D17] via-[#0B0D17]/80 to-transparent" />
+                            
+                            {/* Content */}
+                            <div className="relative z-10 p-6 flex flex-col h-full justify-between">
+                                {/* Top row: Badge */}
+                                <div className="flex justify-between items-start mb-12">
+                                    <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/20 shadow-sm">
+                                        <span className="text-xs font-semibold tracking-wider text-white uppercase flex items-center gap-1.5">
+                                            <VideoCallIcon fontSize="small" className="opacity-80" />
+                                            Past Meeting
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {/* Bottom content */}
+                                <div className="space-y-5">
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1 group-hover:text-indigo-200 transition-colors drop-shadow-md">
+                                            Code: {meeting.meetingCode}
+                                        </h3>
+                                        <div className="flex flex-col gap-1 text-sm text-gray-200 font-medium drop-shadow">
+                                            <p className="flex items-center gap-1.5">
+                                                <CalendarTodayIcon fontSize="small" className="opacity-80" />
+                                                {formatDate(meeting.date)} • {formatTime(meeting.date)}
+                                            </p>
+                                            <p className="flex items-center gap-1.5">
+                                                <AccessTimeIcon fontSize="small" className="opacity-80" />
+                                                {meeting.duration ? `${meeting.duration} Mins` : `Duration Unknown`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <Button
+                                        onClick={() => routeTo(`/${meeting.meetingCode}`)}
+                                        className="w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-6 rounded-xl font-semibold text-base transition-all duration-300 group-hover:bg-indigo-600 group-hover:border-indigo-500 group-hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
+                                    >
+                                        Rejoin Meeting
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    );
+                })}
               </div>
             )}
           </div>
