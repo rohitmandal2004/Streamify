@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
-import { LayoutDashboard, UserCog, Settings, LogOut, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, UserCog, Settings, LogOut, CalendarDays, Share2, X, Copy, Check } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { cn } from '../lib/utils';
 import Logo from '../components/Logo';
@@ -31,6 +31,8 @@ function CalendarPage() {
     const [meetingName, setMeetingName] = useState("");
     const [bookedMeetings, setBookedMeetings] = useState<any[]>([]);
     const [isBooking, setIsBooking] = useState(false);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -109,6 +111,59 @@ function CalendarPage() {
             } finally {
                 setIsBooking(false);
             }
+        }
+    };
+
+    const handleCancelMeeting = async (meetingCode: string) => {
+        if (!window.confirm("Are you sure you want to cancel this meeting? This action cannot be undone.")) return;
+        setCancellingId(meetingCode);
+        try {
+            if (context?.cancelScheduledMeeting) {
+                await context.cancelScheduledMeeting(meetingCode);
+            }
+            setBookedMeetings(prev => prev.filter(m => m.id !== meetingCode));
+        } catch (err) {
+            console.error("Failed to cancel meeting", err);
+        } finally {
+            setCancellingId(null);
+        }
+    };
+
+    const handleShareMeeting = async (meeting: any) => {
+        const IS_PROD = window.location.hostname !== 'localhost';
+        const baseUrl = IS_PROD ? window.location.origin : 'http://localhost:3000';
+        const fullLink = `${baseUrl}${meeting.link}`;
+        const shareText = `You're invited to join "${meeting.name}" on ${meeting.date} at ${meeting.time}.\n\nJoin here: ${fullLink}`;
+
+        // Try native share first (mobile-friendly)
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Streamify: ${meeting.name}`,
+                    text: shareText,
+                    url: fullLink
+                });
+                return;
+            } catch (err) {
+                // User cancelled or share failed, fall through to clipboard
+            }
+        }
+
+        // Fallback: copy to clipboard
+        try {
+            await navigator.clipboard.writeText(shareText);
+            setCopiedId(meeting.id);
+            setTimeout(() => setCopiedId(null), 2500);
+        } catch (err) {
+            // Final fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = shareText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            setCopiedId(meeting.id);
+            setTimeout(() => setCopiedId(null), 2500);
         }
     };
 
@@ -287,13 +342,36 @@ function CalendarPage() {
                                                 
                                                 {/* Content */}
                                                 <div className="relative z-10 p-6 flex flex-col h-full justify-between">
-                                                    {/* Top row: Badge */}
+                                                    {/* Top row: Badge + Actions */}
                                                     <div className="flex justify-between items-start mb-12">
                                                         <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/20 shadow-sm">
                                                             <span className="text-xs font-semibold tracking-wider text-white uppercase flex items-center gap-1.5">
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                                                                 Upcoming
                                                             </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {/* Share Button */}
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleShareMeeting(meeting); }}
+                                                                className="p-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-indigo-500/30 hover:border-indigo-400/40 transition-all duration-300 group/share"
+                                                                title="Share meeting invite"
+                                                            >
+                                                                {copiedId === meeting.id ? (
+                                                                    <Check className="h-4 w-4 text-green-400" />
+                                                                ) : (
+                                                                    <Share2 className="h-4 w-4 text-white/80 group-hover/share:text-indigo-300" />
+                                                                )}
+                                                            </button>
+                                                            {/* Cancel Button */}
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelMeeting(meeting.id); }}
+                                                                disabled={cancellingId === meeting.id}
+                                                                className="p-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-red-500/30 hover:border-red-400/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group/cancel"
+                                                                title="Cancel meeting"
+                                                            >
+                                                                <X className={`h-4 w-4 text-white/80 group-hover/cancel:text-red-300 ${cancellingId === meeting.id ? 'animate-spin' : ''}`} />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                     
@@ -309,14 +387,35 @@ function CalendarPage() {
                                                             </p>
                                                         </div>
                                                         
-                                                        <Button
-                                                            onClick={() => navigate(meeting.link)}
-                                                            className="w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-6 rounded-xl font-semibold text-base transition-all duration-300 group-hover:bg-indigo-600 group-hover:border-indigo-500 group-hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
-                                                        >
-                                                            Join Meeting
-                                                        </Button>
+                                                        {/* Action Buttons Row */}
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                onClick={() => navigate(meeting.link)}
+                                                                className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-6 rounded-xl font-semibold text-base transition-all duration-300 group-hover:bg-indigo-600 group-hover:border-indigo-500 group-hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
+                                                            >
+                                                                Join Meeting
+                                                            </Button>
+                                                            <Button
+                                                                onClick={(e: any) => { e.stopPropagation(); handleShareMeeting(meeting); }}
+                                                                className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-6 px-4 rounded-xl font-semibold transition-all duration-300 hover:border-indigo-400/40 hover:shadow-[0_0_15px_rgba(79,70,229,0.2)]"
+                                                                title="Copy invite link"
+                                                            >
+                                                                {copiedId === meeting.id ? (
+                                                                    <Check className="h-5 w-5 text-green-400" />
+                                                                ) : (
+                                                                    <Copy className="h-5 w-5" />
+                                                                )}
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Copied toast */}
+                                                {copiedId === meeting.id && (
+                                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-green-500/90 backdrop-blur-md rounded-full text-white text-xs font-semibold shadow-lg animate-bounce">
+                                                        ✓ Invite copied to clipboard!
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}

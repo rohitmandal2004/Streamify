@@ -150,6 +150,22 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const cancelScheduledMeeting = async (meetingCode) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('scheduled_meetings')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('meeting_code', meetingCode);
+            if (error) throw error;
+            return { success: true };
+        } catch (err) {
+            console.error("Cancel meeting error", err);
+            throw err;
+        }
+    }
+
     const handleProfileUpdate = async (email, phone, profileImage) => {
         // Mock method since updates are usually handled via Clerk user profile, but this prevents errors if called
         return { success: true };
@@ -163,6 +179,7 @@ export const AuthProvider = ({ children }) => {
         getHistoryOfUser, 
         scheduleMeeting,
         getScheduledMeetings,
+        cancelScheduledMeeting,
         handleRegister, 
         handleLogin, 
         handleGoogleAuth, 
