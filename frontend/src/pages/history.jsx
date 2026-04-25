@@ -91,7 +91,7 @@ function History() {
       </Sidebar>
 
       <div className="flex flex-1 overflow-y-auto w-full relative h-screen">
-        <div className="min-h-full bg-transparent relative flex flex-col w-full p-6 sm:p-10">
+        <div className="min-h-full bg-transparent relative flex flex-col w-full p-6 sm:p-10 pb-32 md:pb-10">
           {/* Background Ambience */}
           <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none w-full h-full">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />

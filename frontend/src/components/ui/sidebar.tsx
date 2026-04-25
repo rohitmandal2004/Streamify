@@ -125,7 +125,12 @@ export const MobileSidebar = ({
     children,
     ...props
 }: React.ComponentProps<"div">) => {
-    const links = extractLinks(children);
+    // Extract links and filter out the user profile link for mobile 
+    // (since it takes up space and is already shown in the top navbar on some pages)
+    const links = extractLinks(children).filter(
+        (link) => link.props?.link?.href !== "/profile"
+    );
+    
     return (
         <div
             className="h-[4.5rem] flex flex-row md:hidden items-center justify-around bg-[#000000]/90 backdrop-blur-xl border-t border-white/10 w-full text-white z-[100] fixed bottom-0 left-0 right-0 px-2 safe-area-bottom"

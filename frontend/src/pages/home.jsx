@@ -209,7 +209,7 @@ function HomeComponent() {
             </motion.div>
           </div>
 
-          <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 sm:gap-8 pb-20 z-10">
+          <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 sm:gap-8 pb-32 md:pb-20 z-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full pointer-events-auto">
               {/* Join Meeting Card */}
               <motion.div

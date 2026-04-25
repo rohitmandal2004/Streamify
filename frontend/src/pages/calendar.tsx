@@ -159,7 +159,7 @@ function CalendarPage() {
                     </div>
                 </SidebarBody>
             </Sidebar>
-            <div className="flex flex-1 overflow-y-auto w-full p-8 flex-col bg-transparent relative z-10">
+            <div className="flex flex-1 overflow-y-auto w-full p-8 pb-32 md:pb-8 flex-col bg-transparent relative z-10">
                 <div className="max-w-4xl mx-auto w-full">
                     <h1 className="text-4xl font-bold mb-8">Calendar & Scheduling</h1>
 
