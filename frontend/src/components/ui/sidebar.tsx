@@ -128,7 +128,7 @@ export const MobileSidebar = ({
     // Extract links and filter out the user profile link for mobile 
     // (since it takes up space and is already shown in the top navbar on some pages)
     const links = extractLinks(children).filter(
-        (link) => link.props?.link?.href !== "/profile"
+        (link) => (link.props as any)?.link?.href !== "/profile"
     );
     
     return (
