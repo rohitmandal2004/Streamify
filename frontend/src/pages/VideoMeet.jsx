@@ -622,6 +622,11 @@ export default function VideoMeetComponent() {
     };
 
     const handlePiP = async () => {
+        // Check if PiP is supported at all
+        if (!document.pictureInPictureEnabled) {
+            handleShowToast("PiP is not supported in this browser. Try Chrome or Safari.", "warning");
+            return;
+        }
         try {
             if (document.pictureInPictureElement) {
                 await document.exitPictureInPicture();
@@ -635,15 +640,26 @@ export default function VideoMeetComponent() {
                     videoElement = localVideoref.current;
                 }
 
-                if (videoElement) {
+                if (videoElement && videoElement.readyState >= 2) {
                     await videoElement.requestPictureInPicture();
+                    handleShowToast("Picture-in-Picture activated", "success");
+                } else if (videoElement) {
+                    // Wait for video to be ready
+                    videoElement.addEventListener('loadeddata', async () => {
+                        try {
+                            await videoElement.requestPictureInPicture();
+                            handleShowToast("Picture-in-Picture activated", "success");
+                        } catch (e) {
+                            handleShowToast("Could not start PiP. Ensure camera is active.", "error");
+                        }
+                    }, { once: true });
                 } else {
                     handleShowToast("No video available for PiP", "error");
                 }
             }
         } catch (error) {
             console.error("PiP Error:", error);
-            handleShowToast("Picture-in-Picture is not supported or failed", "error");
+            handleShowToast("PiP failed. Make sure your camera is on.", "error");
         }
     };
 
@@ -1421,18 +1437,18 @@ export default function VideoMeetComponent() {
         {!video ? <VideocamOffIcon /> : <VideocamIcon />}
       </button>
 
-      {/* Screen Share - desktop only */}
+      {/* Screen Share - Desktop only */}
       <button onClick={() => setScreen(!screen)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${screen ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
         <ScreenShareIcon />
       </button>
 
-      {/* PiP Mode - visible on ALL devices */}
-      <button onClick={handlePiP} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg">
+      {/* PiP Mode - Desktop only */}
+      <button onClick={handlePiP} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
          <PictureInPictureAltIcon />
       </button>
 
-      {/* Reactions Menu - visible on ALL devices */}
-      <div className="relative">
+      {/* Reactions Menu - Desktop only */}
+      <div className="relative hidden sm:block">
           <button onClick={() => setShowReactionsMenu(!showReactionsMenu)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg ${showReactionsMenu ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
               <MoodIcon />
           </button>
@@ -1455,29 +1471,29 @@ export default function VideoMeetComponent() {
           </AnimatePresence>
       </div>
       
-      {/* Reactions (Raise Hand mapped) */}
+      {/* Raise Hand - Desktop only */}
       <button onClick={handleRaiseHand} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
         <PanToolIcon />
       </button>
       
-      {/* More / Settings */}
+      {/* Settings - Desktop only */}
       <button onClick={() => setSettingsOpen(true)} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
          <SettingsIcon />
       </button>
 
-      {/* Record */}
+      {/* Record - Desktop only */}
       <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${isRecording ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400'}`}>
          <FiberManualRecordIcon fontSize="small" />
       </button>
       
-      {/* Captions */}
+      {/* Captions - Desktop only */}
       <button onClick={handleToggleCaptions} className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${showCaptions ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-blue-500/20 hover:border-blue-500/50 hover:text-blue-400'}`}>
          <ClosedCaptionIcon fontSize="small" />
       </button>
 
-      {/* Participants (Mobile) */}
-      <button onClick={() => setShowOptionsDrawer(true)} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg sm:hidden">
-         <GroupIcon />
+      {/* More Options - Mobile Only (three dots) */}
+      <button onClick={() => setShowOptionsDrawer(true)} className="w-11 h-11 flex items-center justify-center rounded-xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 transition-all active:scale-95 shadow-lg sm:hidden">
+         <MoreVertIcon />
       </button>
       
       {/* Leave Button */}
@@ -1534,6 +1550,12 @@ export default function VideoMeetComponent() {
       waitingList={waitingList}
       isHost={isHost}
       onAdmit={handleAdmitUser}
+      participantNames={participantNames}
+      participantsMuted={participantsMuted}
+      totalParticipants={videos.length + 1}
+      onReaction={handleReaction}
+      onPiP={handlePiP}
+      username={username}
   />
   
   <Toast 
