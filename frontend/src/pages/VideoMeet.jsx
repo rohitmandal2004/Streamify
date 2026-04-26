@@ -27,6 +27,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import MoodIcon from '@mui/icons-material/Mood';
+import ReplyIcon from '@mui/icons-material/Reply';
 import { AnimatePresence } from 'framer-motion';
 
 import SelfVideo from '../components/SelfVideo';
@@ -113,6 +114,7 @@ export default function VideoMeetComponent() {
     const [waitingList, setWaitingList] = useState([]);
     const [settingsOpen, setSettingsOpen] = useState(false); // Define settingsOpen state
     const [history, setHistory] = useState([]);
+    const [replyingTo, setReplyingTo] = useState(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordedChunks, setRecordedChunks] = useState([]);
     const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -124,6 +126,12 @@ export default function VideoMeetComponent() {
     const [reportModalOpen, setReportModalOpen] = useState(false);
     const [activeReportTarget, setActiveReportTarget] = useState(null); // { socketId, username }
 
+    // Typing Indicator
+    const [typingUsers, setTypingUsers] = useState({}); // socketId -> username
+    const typingTimeoutRef = useRef(null);
+    
+    // Join Notifications (top-right popups)
+    const [joinNotifications, setJoinNotifications] = useState([]);
     
     const [toastConfig, setToastConfig] = useState({ open: false, message: '', type: 'info' });
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -454,6 +462,8 @@ export default function VideoMeetComponent() {
 
             socketRef.current.on('waiting-list', (user) => {
                 setWaitingList(prev => [...prev, user]);
+                setJoinNotifications(prev => [...prev, user]);
+                playJoinSound();
             });
 
             socketRef.current.on('waiting-list-update', (list) => {
@@ -461,13 +471,25 @@ export default function VideoMeetComponent() {
             });
 
             // Listeners
-            socketRef.current.on('chat-message', (data, sender, socketIdSender) => {
+            socketRef.current.on('chat-message', (data, sender, socketIdSender, replyTo) => {
                 const timestamp = new Date().toISOString();
-                setMessages((prevMessages) => [...prevMessages, { "data": data, "sender": sender, "timestamp": timestamp }]);
+                setMessages((prevMessages) => [...prevMessages, { "data": data, "sender": sender, "timestamp": timestamp, "replyTo": replyTo }]);
                 if (socketIdSender !== socketIdRef.current) {
                     setNewMessages((prev) => prev + 1);
                     playChatSound();
                 }
+            });
+
+            socketRef.current.on('typing', (typingUsername, socketId) => {
+                setTypingUsers(prev => ({ ...prev, [socketId]: typingUsername }));
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = setTimeout(() => {
+                    setTypingUsers(prev => {
+                        const newTyping = { ...prev };
+                        delete newTyping[socketId];
+                        return newTyping;
+                    });
+                }, 2000);
             });
 
             // Raise Hand
@@ -855,7 +877,10 @@ export default function VideoMeetComponent() {
 
 
     let handleSendMessage = (text) => {
-        if (socketRef.current) socketRef.current.emit('chat-message', text, username)
+        if (socketRef.current) {
+             socketRef.current.emit('chat-message', text, username, replyingTo);
+             setReplyingTo(null);
+        }
     }
     const addMessage = (data, sender, socketIdSender) => {
         setMessages(prev => [...prev, { sender, data, timestamp: Date.now() }]);
@@ -1262,6 +1287,13 @@ export default function VideoMeetComponent() {
         }
     };
 
+    const handleChatChange = (e) => {
+        setChatInput(e.target.value);
+        if (socketRef.current && e.target.value.trim().length > 0) {
+            socketRef.current.emit('typing', username);
+        }
+    };
+
     // Grid Calculation
     const totalParticipants = videos.length + 1; // +1 for self
 
@@ -1280,8 +1312,13 @@ export default function VideoMeetComponent() {
     </div>
     
     <div className="flex items-center gap-2">
-        <button onClick={() => setShowChat(!showChat)} className="p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-           <ChatBubbleIcon fontSize="small" />
+        <button onClick={() => { setShowChat(!showChat); setNewMessages(0); }} className="relative p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+           <ChatBubbleIcon fontSize="small" className="text-gray-300 hover:text-white" />
+           {newMessages > 0 && (
+               <span className="absolute -top-1 -right-1 bg-[#25D366] text-black text-[10px] font-black px-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-[#111]">
+                   {newMessages > 99 ? '99+' : newMessages}
+               </span>
+           )}
         </button>
         <button onClick={switchCamera} className="p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-300 hover:text-white">
           <CameraswitchIcon fontSize="small"/>
@@ -1445,20 +1482,66 @@ export default function VideoMeetComponent() {
                                 <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{m.sender}</span>
                                 <span className="text-[9px] text-gray-500">{timeString}</span>
                               </div>
-                              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] ${isMe ? 'bg-indigo-500/20 text-indigo-100 border border-indigo-500/30 rounded-br-sm' : 'bg-white/5 text-gray-200 border border-white/10 rounded-bl-sm'}`}>
+                              <div className={`group relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] ${isMe ? 'bg-indigo-500/20 text-indigo-100 border border-indigo-500/30 rounded-br-sm' : 'bg-white/5 text-gray-200 border border-white/10 rounded-bl-sm'}`}>
+                                    {m.replyTo && (
+                                        <div className={`mb-2 p-2 rounded-lg text-xs border-l-2 ${isMe ? 'bg-indigo-500/20 border-indigo-400 text-indigo-200' : 'bg-black/30 border-gray-500 text-gray-300'}`}>
+                                            <span className="font-bold block mb-0.5">{m.replyTo.sender}</span>
+                                            <span className="truncate block opacity-80">{m.replyTo.data}</span>
+                                        </div>
+                                    )}
                                     {m.data}
+                                    <button 
+                                        onClick={() => setReplyingTo(m)}
+                                        className={`absolute top-1/2 -translate-y-1/2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-1.5 rounded-full bg-surface/90 border border-white/10 hover:bg-white/20 shadow-xl z-10 ${isMe ? '-left-10' : '-right-10'}`}
+                                    >
+                                        <ReplyIcon fontSize="small" className="text-gray-300" />
+                                    </button>
                               </div>
                             </div>
                           );
                       })}
                   </div>
                   
+                  {/* Typing Indicator */}
+                  {Object.keys(typingUsers).length > 0 && (
+                      <div className="px-5 pb-2 text-xs text-indigo-400 font-medium italic animate-pulse flex items-center gap-1.5">
+                          <div className="flex items-center gap-0.5">
+                              <span className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></span>
+                              <span className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]"></span>
+                              <span className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce"></span>
+                          </div>
+                          <span>{Object.values(typingUsers).join(', ')} {Object.keys(typingUsers).length > 1 ? 'are' : 'is'} typing...</span>
+                      </div>
+                  )}
+                  
                   {/* Chat Input */}
-                  <div className="p-4 bg-black/20 border-t border-white/10">
-                    <div className="relative flex items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+                  <div className="p-4 bg-black/20 border-t border-white/10 shrink-0">
+                    <AnimatePresence>
+                        {replyingTo && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10, height: 0 }}
+                                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                exit={{ opacity: 0, y: 10, height: 0 }}
+                                className="mb-3 bg-surface/50 border border-white/10 rounded-xl p-2.5 relative flex items-start gap-2 shadow-inner"
+                            >
+                                <div className="w-1 h-full bg-indigo-500 rounded-full absolute left-0 top-0 bottom-0"></div>
+                                <div className="pl-3 flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <ReplyIcon sx={{ fontSize: 14 }} className="text-indigo-400" />
+                                        <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Replying to {replyingTo.sender}</p>
+                                    </div>
+                                    <p className="text-xs text-gray-300 truncate font-medium">{replyingTo.data}</p>
+                                </div>
+                                <button onClick={() => setReplyingTo(null)} className="text-gray-500 hover:text-red-400 p-1 rounded-full hover:bg-red-500/10 transition-colors">
+                                    <CloseIcon fontSize="small" />
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    <div className="relative flex items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all shadow-inner">
                       <input 
                         value={chatInput} 
-                        onChange={e => setChatInput(e.target.value)} 
+                        onChange={handleChatChange} 
                         onKeyDown={handleChatSubmit}
                         className="w-full bg-transparent py-3 pl-4 pr-12 text-sm focus:outline-none placeholder-gray-500 text-white" 
                         placeholder="Send a message..." 
