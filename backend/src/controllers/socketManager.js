@@ -219,6 +219,24 @@ import { Server } from "socket.io"
 				}
 			})
 
+			socket.on("user-video-status", (videoOff) => {
+				const [matchingRoom, found] = Object.entries(connections)
+					.reduce(([room, isFound], [roomKey, roomValue]) => {
+						if (!isFound && roomValue.includes(socket.id)) {
+							return [roomKey, true];
+						}
+						return [room, isFound];
+					}, ['', false]);
+
+				if (found === true) {
+					connections[matchingRoom].forEach((elem) => {
+						if (elem !== socket.id) {
+							io.to(elem).emit("user-video-status", socket.id, videoOff)
+						}
+					})
+				}
+			})
+
             // Captions
             socket.on("caption-message", (text, username) => {
                 const [matchingRoom, found] = Object.entries(connections)

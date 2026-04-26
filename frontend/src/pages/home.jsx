@@ -300,25 +300,34 @@ function HomeComponent() {
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="secondary"
-                          size="lg"
-                          fullWidth
-                          onClick={() => { setCreatedCode(''); setInviteCopied(false); }}
-                          className="hover:bg-white/10"
+                      <div className="flex flex-col gap-3">
+                        <button
+                          onClick={handleCopyInvite}
+                          className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all"
                         >
-                          New Code
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="lg"
-                          fullWidth
-                          onClick={handleGoToMeeting}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                        >
-                          Join
-                        </Button>
+                          {inviteCopied ? <CheckIcon style={{ fontSize: 18 }} className="text-green-400" /> : <ContentCopyIcon style={{ fontSize: 18 }} />}
+                          {inviteCopied ? 'Link Copied!' : 'Copy Invite Link'}
+                        </button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="secondary"
+                            size="lg"
+                            fullWidth
+                            onClick={() => { setCreatedCode(''); setInviteCopied(false); }}
+                            className="hover:bg-white/10"
+                          >
+                            New Code
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="lg"
+                            fullWidth
+                            onClick={handleGoToMeeting}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          >
+                            Join
+                          </Button>
+                        </div>
                       </div>
                     </>
                   ) : (
@@ -326,15 +335,17 @@ function HomeComponent() {
                       <div className="min-h-[3rem] sm:h-[74px] flex items-end">
                         <p className="text-xs sm:text-sm text-gray-500">Get a link that you can share with anyone.</p>
                       </div>
-                      <Button
-                        variant="secondary"
-                        size="lg"
-                        fullWidth
-                        onClick={handleCreateMeeting}
-                        className="hover:bg-purple-500/10 hover:text-purple-400 hover:border-purple-500/50"
-                      >
-                        Create Meeting
-                      </Button>
+                      <div className="grid grid-cols-1 gap-3">
+                        <Button
+                          variant="secondary"
+                          size="lg"
+                          fullWidth
+                          onClick={handleCreateMeeting}
+                          className="hover:bg-purple-500/10 hover:text-purple-400 hover:border-purple-500/50"
+                        >
+                          Create Meeting
+                        </Button>
+                      </div>
                     </>
                   )}
                 </div>

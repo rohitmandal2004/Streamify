@@ -76,9 +76,11 @@ export default function VideoMeetComponent() {
     let [video, setVideo] = useState(true);
     let [audio, setAudio] = useState(true);
     let [screen, setScreen] = useState(false);
-    let [showChat, setShowChat] = useState(false);
+    const [showChat, setShowChat] = useState(false);
+    const [sidePanelTab, setSidePanelTab] = useState('chat'); // 'chat' or 'people'
     let [screenAvailable, setScreenAvailable] = useState();
     let [messages, setMessages] = useState([]);
+    const [chatInput, setChatInput] = useState("");
     let [newMessages, setNewMessages] = useState(0);
     let [askForUsername, setAskForUsername] = useState(true);
     const [facingMode, setFacingMode] = useState('user');
@@ -89,6 +91,7 @@ export default function VideoMeetComponent() {
     let [videos, setVideos] = useState([]); // Remote videos
     let [participantNames, setParticipantNames] = useState({}); // socketId -> username
     let [participantsMuted, setParticipantsMuted] = useState({}); // socketId -> boolean
+    let [participantsVideoOff, setParticipantsVideoOff] = useState({}); // socketId -> boolean
     let [raisedHands, setRaisedHands] = useState({});
 
     // UI State
@@ -121,7 +124,6 @@ export default function VideoMeetComponent() {
     const [reportModalOpen, setReportModalOpen] = useState(false);
     const [activeReportTarget, setActiveReportTarget] = useState(null); // { socketId, username }
 
-    const [chatInput, setChatInput] = useState('');
     
     const [toastConfig, setToastConfig] = useState({ open: false, message: '', type: 'info' });
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -221,17 +223,16 @@ export default function VideoMeetComponent() {
         };
     }, []);
 
+    // Track whether we've already connected to prevent double-calls
+    const hasConnectedRef = useRef(false);
+
     useEffect(() => {
+        // Only handle TOGGLE after initial connection (not the first render)
+        if (!hasConnectedRef.current) return;
         if (video) {
             getUserMedia();
         } else {
-            // If video is turned off, we might want to stop tracks or show black frame
-            // The getUserMediaSuccess logic handles 'black' frame replacement when video is toggled off
-            // But if we just toggled state, we need to trigger the black frame logic:
             try {
-                // If we have a stream, stop it?
-                // Actually the current getUserMediaSuccess logic creates a black frame ONLY when called.
-                // We should probably explicitly call a helper to stop video.
                 let tracks = localVideoref.current?.srcObject?.getVideoTracks();
                 if (tracks) tracks.forEach(t => t.enabled = false);
             } catch (e) { }
@@ -239,12 +240,41 @@ export default function VideoMeetComponent() {
     }, [video]);
 
     // --- Media Handling ---
-    let getMedia = () => {
+    let getMedia = async () => {
         // Carry over the lobby preview state to the meeting
         const shouldVideo = videoAvailable && previewCamOn;
         const shouldAudio = audioAvailable && previewMicOn;
+
+        // CRITICAL FIX: Acquire the media stream BEFORE connecting to socket.
+        // This prevents the race condition where peer connections are created
+        // with a black/silence stream because getUserMedia hasn't completed yet.
+        try {
+            let videoConstraints = shouldVideo ? { facingMode: facingMode } : false;
+            let audioConstraints = shouldAudio ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false;
+
+            if (videoConstraints || audioConstraints) {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: videoConstraints,
+                    audio: audioConstraints
+                });
+                window.localStream = stream;
+                if (localVideoref.current) localVideoref.current.srcObject = stream;
+            } else {
+                // No video or audio requested — create a black+silence placeholder
+                let blackSilence = (...args) => new MediaStream([black(...args), silence()]);
+                window.localStream = blackSilence();
+                if (localVideoref.current) localVideoref.current.srcObject = window.localStream;
+            }
+        } catch (e) {
+            console.warn("Could not get user media before connecting:", e);
+            // Fallback: create black+silence so peer connections still work
+            let blackSilence = (...args) => new MediaStream([black(...args), silence()]);
+            window.localStream = blackSilence();
+        }
+
         setVideo(shouldVideo);
         setAudio(shouldAudio);
+        hasConnectedRef.current = true;
         connectToSocketServer();
     }
 
@@ -432,9 +462,13 @@ export default function VideoMeetComponent() {
 
             // Listeners
             socketRef.current.on('chat-message', (data, sender, socketIdSender) => {
-                addMessage(data, sender, socketIdSender);
-                if (socketIdSender !== socketIdRef.current) playChatSound();
-            })
+                const timestamp = new Date().toISOString();
+                setMessages((prevMessages) => [...prevMessages, { "data": data, "sender": sender, "timestamp": timestamp }]);
+                if (socketIdSender !== socketIdRef.current) {
+                    setNewMessages((prev) => prev + 1);
+                    playChatSound();
+                }
+            });
 
             // Raise Hand
             socketRef.current.on('raise-hand', (socketId, username) => {
@@ -493,6 +527,10 @@ export default function VideoMeetComponent() {
 
         socketRef.current.on('user-mute-status', (socketId, muted) => {
             setParticipantsMuted(prev => ({ ...prev, [socketId]: muted }));
+        });
+
+        socketRef.current.on('user-video-status', (socketId, videoOff) => {
+            setParticipantsVideoOff(prev => ({ ...prev, [socketId]: videoOff }));
         });
 
 
@@ -596,7 +634,18 @@ export default function VideoMeetComponent() {
         navigate('/');
     }
 
-    let handleVideo = () => setVideo(!video);
+    let handleVideo = () => {
+        const newVideoState = !video;
+        setVideo(newVideoState);
+        try {
+            window.localStream.getVideoTracks().forEach(track => track.enabled = newVideoState);
+        } catch (e) { }
+
+        if (socketRef.current) {
+            socketRef.current.emit('user-video-status', !newVideoState);
+        }
+    };
+
     let handleAudio = () => {
         const newAudioState = !audio;
         setAudio(newAudioState);
@@ -632,8 +681,9 @@ export default function VideoMeetComponent() {
                 await document.exitPictureInPicture();
             } else {
                 let videoElement = null;
-                if (activeVideo && activeVideo.socketId) {
-                    videoElement = document.querySelector(`video[data-socket="${activeVideo.socketId}"]`);
+                const firstRemoteVideo = videos.length > 0 ? videos[0] : null;
+                if (firstRemoteVideo && firstRemoteVideo.socketId) {
+                    videoElement = document.querySelector(`video[data-socket="${firstRemoteVideo.socketId}"]`);
                 }
                 
                 if (!videoElement) {
@@ -997,6 +1047,22 @@ export default function VideoMeetComponent() {
         }
     };
 
+    // CRITICAL FIX: Re-apply remote streams to video elements after React re-renders.
+    // React inline ref callbacks create new function references on each render, which can
+    // cause the video element to be recreated and lose its srcObject.
+    useEffect(() => {
+        // Reattach remote streams to their video elements
+        videos.forEach(v => {
+            if (v.stream && v.socketId) {
+                const videoEl = document.querySelector(`video[data-socket="${v.socketId}"]`);
+                if (videoEl && videoEl.srcObject !== v.stream) {
+                    videoEl.srcObject = v.stream;
+                    videoEl.play().catch(() => {}); // Force play in case autoplay failed
+                }
+            }
+        });
+    }, [videos]);
+
     // --- Render ---
     if (askForUsername) {
         return (
@@ -1199,11 +1265,6 @@ export default function VideoMeetComponent() {
     // Grid Calculation
     const totalParticipants = videos.length + 1; // +1 for self
 
-    // Separate active speaker from others for the layout
-    // We can assume local user is active if alone, otherwise the first remote user
-    const activeVideo = videos.length > 0 ? videos[0] : null;
-    const remainingVideos = videos.length > 0 ? videos.slice(1) : [];
-
     return (
 <div className="bg-black text-white overflow-hidden h-[100dvh] flex flex-col font-sans">
   
@@ -1216,104 +1277,90 @@ export default function VideoMeetComponent() {
         <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgb(99,102,241)]"></span>
         <span className="text-xs font-bold tracking-widest text-indigo-300"><CallTimer startTime={callStartTime} /></span>
       </div>
-      <div className="bg-white/5 pl-3 pr-1 py-1 rounded-full text-[10px] sm:text-xs font-medium border border-white/10 ml-1 sm:ml-2 text-gray-300 flex items-center gap-1 sm:gap-2">
-        <span className="truncate max-w-[70px] sm:max-w-[120px]">M-ID: {meetingId}</span>
-        <button 
-            onClick={() => {
-                navigator.clipboard.writeText(meetingId);
-                handleShowToast("Meeting ID copied to clipboard", "success");
-            }}
-            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-indigo-400 flex items-center justify-center"
-            title="Copy Meeting ID"
-        >
-            <ContentCopyIcon style={{ fontSize: '14px' }} />
-        </button>
-      </div>
     </div>
     
-    <div className="flex items-center gap-4 md:gap-6">
-      <div className="flex -space-x-2">
-         {/* Render up to 3 avatars based on total participants */}
-         {[...Array(Math.min(3, totalParticipants))].map((_, i) => (
-             <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-indigo-500/20 flex items-center justify-center text-xs text-indigo-300 font-bold backdrop-blur-md">
-                 {(() => {
-                    const keys = Object.keys(participantNames);
-                    return participantNames[keys[i]]?.charAt(0) || "U";
-                 })()}
-             </div>
-         ))}
-         {totalParticipants > 3 && (
-            <div className="w-8 h-8 rounded-full border-2 border-black bg-surface/30 flex items-center justify-center text-[10px] font-bold text-gray-300 backdrop-blur-md">
-              +{totalParticipants - 3}
-            </div>
-         )}
-      </div>
-      <div className="flex items-center gap-2">
-        {isHost && waitingList.length > 0 && (
-          <button onClick={() => setShowOptionsDrawer(true)} className="px-3 py-1 text-xs bg-indigo-600 rounded-full animate-pulse text-white font-bold hover:bg-indigo-500 transition-colors">
-            {waitingList.length} Waiting
-          </button>
-        )}
-        <button onClick={switchCamera} className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-300 hover:text-white">
+    <div className="flex items-center gap-2">
+        <button onClick={() => setShowChat(!showChat)} className="p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+           <ChatBubbleIcon fontSize="small" />
+        </button>
+        <button onClick={switchCamera} className="p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-300 hover:text-white">
           <CameraswitchIcon fontSize="small"/>
         </button>
-      </div>
     </div>
   </header>
   
   <main className="flex-1 flex overflow-hidden p-2 md:p-4 gap-2 md:gap-4 relative min-h-0">
     {/* Abstract Background Elements */}
-    <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -mr-48 -mt-48 pointer-events-none"></div>
-    <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -ml-48 -mb-48 pointer-events-none"></div>
+    <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
+    <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse pointer-events-none [animation-delay:2s]"></div>
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,6,15,0.8)_100%)] pointer-events-none"></div>
 
     {/* Video Grid */}
-    <div className="flex-1 flex flex-col md:grid md:grid-cols-12 md:grid-rows-6 gap-2 md:gap-4 h-full relative z-10 min-h-0">
-      
-      {/* Active Speaker */}
-      <div className="flex-1 md:col-span-8 md:row-span-6 relative rounded-xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group min-h-0">
-          {activeVideo ? (
-              <video data-socket={activeVideo.socketId} ref={ref => { if (ref && activeVideo.stream) ref.srcObject = activeVideo.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
+    <div className={`flex-1 relative z-10 min-h-0 ${totalParticipants > 1 ? 'grid gap-2 md:gap-4' : 'flex'}`}
+        style={{
+            gridTemplateColumns: totalParticipants > 1 ? `repeat(auto-fit, minmax(${totalParticipants > 4 ? '200px' : '300px'}, 1fr))` : 'none',
+            gridAutoRows: '1fr'
+        }}
+    >
+      {/* Local Video */}
+      <div className={`relative rounded-xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group min-h-0 ${totalParticipants === 1 ? 'w-full h-full' : ''}`}>
+          {video ? (
+              <video 
+                ref={localVideoref} 
+                autoPlay 
+                muted 
+                playsInline 
+                onLoadedMetadata={(e) => e.target.play()}
+                className={`w-full h-full object-cover ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} 
+              />
           ) : (
-              <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} />
+              <div className="w-full h-full flex items-center justify-center bg-surface/20">
+                  <div className="text-center">
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-indigo-500/20 flex items-center justify-center text-white font-bold text-2xl md:text-3xl mx-auto mb-4 border border-indigo-500/30">
+                          {username[0]?.toUpperCase()}
+                      </div>
+                      <p className="text-white/40 text-xs md:text-sm font-medium">Your camera is off</p>
+                  </div>
+              </div>
           )}
-        
-        <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
-          {activeVideo ? (participantsMuted[activeVideo.socketId] ? <MicOffIcon fontSize="small" className="text-white/80" /> : <MicIcon fontSize="small" className="text-white/80" />) : (!audio ? <MicOffIcon fontSize="small" className="text-white/80" /> : <MicIcon fontSize="small" className="text-white/80" />)}
-
-          <span className="text-[11px] font-bold tracking-wide text-white">
-              {activeVideo ? activeVideo.username : (`You ${raisedHands['local'] ? "✋" : ""}`)}
-          </span>
-        </div>
-        {!activeVideo && isRecording && (
-        <div className="absolute top-4 right-4 bg-red-500/80 backdrop-blur-md border border-red-500/50 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
-          <FiberManualRecordIcon fontSize="small" className="text-white animate-pulse" />
-          <span className="text-[10px] font-bold text-white uppercase tracking-widest">Recording</span>
-        </div>
-        )}
+          <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
+            {!audio ? <MicOffIcon fontSize="small" className="text-red-400" /> : <MicIcon fontSize="small" className="text-white/80" />}
+            <span className="text-[11px] font-bold tracking-wide text-white">You {raisedHands['local'] ? "✋" : ""}</span>
+          </div>
+          {isRecording && (
+            <div className="absolute top-4 right-4 bg-red-500/80 backdrop-blur-md border border-red-500/50 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+              <FiberManualRecordIcon fontSize="small" className="text-white animate-pulse" />
+              <span className="text-[10px] font-bold text-white uppercase tracking-widest">Rec</span>
+            </div>
+          )}
       </div>
 
-      {/* Side / Bottom Videos */}
-      <div className="h-20 md:h-auto md:col-span-4 md:row-span-6 flex md:flex-col gap-2 md:gap-4 overflow-x-auto md:overflow-y-auto no-scrollbar flex-shrink-0">
-        {/* Self video if active is not local */}
-        {activeVideo && (
-            <div className="w-28 h-20 md:w-full md:h-auto flex-shrink-0 relative rounded-lg md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group md:aspect-auto md:flex-1 md:max-w-none">
-                <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} />
-                <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
-                    <span className="text-[10px] font-bold text-white tracking-wide">You {raisedHands['local'] && "✋"}</span>
-                    {!audio && <MicOffIcon fontSize="inherit" className="text-red-400" />}
-                </div>
-            </div>
-        )}
-
-        {/* Remote Videos */}
-        {remainingVideos.slice(0, 4).map((v, i) => (
-            <div key={v.socketId} className="w-28 h-20 md:w-full md:h-auto flex-shrink-0 relative rounded-lg md:rounded-2xl overflow-hidden bg-surface/30 backdrop-blur-xl border border-white/10 group md:aspect-auto md:flex-1 md:max-w-none">
-              <video data-socket={v.socketId} ref={ref => { if (ref && v.stream) ref.srcObject = v.stream; }} autoPlay playsInline className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 z-10">
-                <span className="text-[10px] font-bold text-white tracking-wide">{v.username} {raisedHands[v.socketId] && "✋"}</span>
-                {participantsMuted[v.socketId] && <MicOffIcon fontSize="inherit" className="text-red-400" />}
+      {/* Remote Videos */}
+      {videos.map((v) => (
+          <div key={v.socketId} className="relative rounded-xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group min-h-0">
+              {!participantsVideoOff[v.socketId] ? (
+                  <video 
+                    data-socket={v.socketId} 
+                    ref={ref => { if (ref && v.stream) ref.srcObject = v.stream; }} 
+                    autoPlay 
+                    playsInline 
+                    onLoadedMetadata={(e) => e.target.play()}
+                    className="w-full h-full object-cover" 
+                  />
+              ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-surface/20">
+                      <div className="text-center">
+                          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-purple-500/20 flex items-center justify-center text-white font-bold text-2xl md:text-3xl mx-auto mb-4 border border-purple-500/30">
+                              {v.username[0]?.toUpperCase()}
+                          </div>
+                          <p className="text-white/40 text-xs md:text-sm font-medium">Camera is off</p>
+                      </div>
+                  </div>
+              )}
+              <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
+                {participantsMuted[v.socketId] ? <MicOffIcon fontSize="small" className="text-red-400" /> : <MicIcon fontSize="small" className="text-white/80" />}
+                <span className="text-[11px] font-bold tracking-wide text-white">{v.username} {raisedHands[v.socketId] ? "✋" : ""}</span>
               </div>
-              
               {/* Host Controls */}
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                   <button
@@ -1332,14 +1379,7 @@ export default function VideoMeetComponent() {
             </div>
         ))}
         
-        {/* Extra Participants Placeholder */}
-        {remainingVideos.length > (activeVideo ? 3 : 4) && (
-            <div className="w-40 md:w-full flex-shrink-0 relative rounded-xl md:rounded-2xl overflow-hidden bg-surface/10 backdrop-blur-md border border-dashed border-white/20 flex flex-col items-center justify-center text-gray-400 gap-2 hover:bg-surface/20 hover:text-white transition-all group cursor-pointer aspect-video md:aspect-auto md:flex-1" onClick={() => setShowOptionsDrawer(true)}>
-              <GroupIcon fontSize="large" className="group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-bold tracking-wide">+{remainingVideos.length - (activeVideo ? 3 : 4)} More</span>
-            </div>
-        )}
-      </div>
+
 
       {/* Captions Overlay */}
       {captionText.text && (
@@ -1370,52 +1410,119 @@ export default function VideoMeetComponent() {
     </div>
     
     {/* Right Side Panel (Chat & Participants) */}
-    <aside className={`${showChat ? 'absolute inset-2 sm:inset-4 z-[70] flex' : 'hidden lg:flex'} w-auto lg:w-80 h-[calc(100%-1rem)] lg:h-full flex-col rounded-2xl lg:rounded-3xl bg-surface/95 lg:bg-surface/30 backdrop-blur-3xl lg:backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden`}>
-      <div className="p-4 lg:p-5 border-b border-white/10 flex justify-between items-center bg-black/40 lg:bg-black/20">
-        <h3 className="font-bold text-white text-sm tracking-wide">Meeting Chat</h3>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-indigo-400 font-medium">{totalParticipants} People</span>
-          <button className="lg:hidden p-1 rounded-full hover:bg-white/10 text-gray-400" onClick={() => setShowChat(false)}>
+    <aside className={`${showChat ? 'absolute inset-2 sm:inset-4 z-[70] flex' : 'hidden lg:flex'} w-auto lg:w-80 h-[calc(100%-1rem)] lg:h-full flex-col rounded-2xl lg:rounded-3xl bg-[#0B0D17]/95 lg:bg-surface/30 backdrop-blur-3xl lg:backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden`}>
+      {/* Tabs Header */}
+      <div className="flex border-b border-white/10 bg-black/40 lg:bg-black/20">
+        <button 
+            onClick={() => setSidePanelTab('chat')}
+            className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${sidePanelTab === 'chat' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+            Chat
+        </button>
+        <button 
+            onClick={() => setSidePanelTab('people')}
+            className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${sidePanelTab === 'people' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+            People ({totalParticipants})
+        </button>
+        <button className="lg:hidden p-4 text-gray-500" onClick={() => setShowChat(false)}>
             <CloseIcon fontSize="small" />
-          </button>
-        </div>
+        </button>
       </div>
       
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-white/10">
-          {messages.map((m, idx) => {
-              const date = new Date(m.timestamp);
-              const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-              const isMe = m.sender === username;
-              return (
-                <div key={idx} className={`flex flex-col gap-1 ${isMe ? 'items-end' : ''}`}>
-                  <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{m.sender}</span>
-                    <span className="text-[9px] text-gray-500">{timeString}</span>
+      <div className="flex-1 overflow-hidden flex flex-col">
+          {sidePanelTab === 'chat' ? (
+              <>
+                  {/* Chat Messages */}
+                  <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-white/10">
+                      {messages.map((m, idx) => {
+                          const date = new Date(m.timestamp);
+                          const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                          const isMe = m.sender === username;
+                          return (
+                            <div key={idx} className={`flex flex-col gap-1 ${isMe ? 'items-end' : ''}`}>
+                              <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{m.sender}</span>
+                                <span className="text-[9px] text-gray-500">{timeString}</span>
+                              </div>
+                              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] ${isMe ? 'bg-indigo-500/20 text-indigo-100 border border-indigo-500/30 rounded-br-sm' : 'bg-white/5 text-gray-200 border border-white/10 rounded-bl-sm'}`}>
+                                    {m.data}
+                              </div>
+                            </div>
+                          );
+                      })}
                   </div>
-                  <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] ${isMe ? 'bg-indigo-500/20 text-indigo-100 border border-indigo-500/30 rounded-br-sm' : 'bg-white/5 text-gray-200 border border-white/10 rounded-bl-sm'}`}>
-                        {m.data}
+                  
+                  {/* Chat Input */}
+                  <div className="p-4 bg-black/20 border-t border-white/10">
+                    <div className="relative flex items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+                      <input 
+                        value={chatInput} 
+                        onChange={e => setChatInput(e.target.value)} 
+                        onKeyDown={handleChatSubmit}
+                        className="w-full bg-transparent py-3 pl-4 pr-12 text-sm focus:outline-none placeholder-gray-500 text-white" 
+                        placeholder="Send a message..." 
+                        type="text"
+                      />
+                      <button onClick={handleChatSubmit} className="absolute right-2 p-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white transition-colors flex items-center justify-center">
+                        <SendIcon fontSize="small" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-          })}
-      </div>
-      
-      {/* Chat Input */}
-      <div className="p-4 bg-black/20 border-t border-white/10">
-        <div className="relative flex items-center bg-black/40 border border-white/10 rounded-2xl focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
-          <input 
-            value={chatInput} 
-            onChange={e => setChatInput(e.target.value)} 
-            onKeyDown={handleChatSubmit}
-            className="w-full bg-transparent py-3 pl-4 pr-12 text-sm focus:outline-none placeholder-gray-500 text-white" 
-            placeholder="Send a message..." 
-            type="text"
-          />
-          <button onClick={handleChatSubmit} className="absolute right-2 p-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white transition-colors flex items-center justify-center">
-            <SendIcon fontSize="small" />
-          </button>
-        </div>
+              </>
+          ) : (
+              /* People List */
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                  {/* Self */}
+                  <div className="flex items-center justify-between group">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                              {username[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                              <p className="text-sm font-bold text-white">{username} (You)</p>
+                              {isHost && <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Host</span>}
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          {!audio ? <MicOffIcon fontSize="small" className="text-red-500" /> : <MicIcon fontSize="small" className="text-gray-500" />}
+                      </div>
+                  </div>
+
+                  {/* Others */}
+                  {videos.map(v => (
+                      <div key={v.socketId} className="flex items-center justify-between group">
+                          <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-surface/50 border border-white/10 flex items-center justify-center text-gray-300 font-bold group-hover:border-indigo-500/50 transition-all">
+                                  {v.username[0]?.toUpperCase()}
+                              </div>
+                              <p className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{v.username}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                              {participantsMuted[v.socketId] ? <MicOffIcon fontSize="small" className="text-red-500" /> : <MicIcon fontSize="small" className="text-gray-500" />}
+                          </div>
+                      </div>
+                  ))}
+
+                  {/* Waiting List if Host */}
+                  {isHost && waitingList.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-white/5">
+                          <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Waiting Room</h4>
+                          {waitingList.map(user => (
+                              <div key={user.socketId} className="flex items-center justify-between bg-amber-500/5 p-3 rounded-xl border border-amber-500/10 mb-2">
+                                  <span className="text-xs font-bold text-amber-200">{user.username}</span>
+                                  <button 
+                                    onClick={() => handleAdmitUser(user.socketId)}
+                                    className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded-lg transition-all"
+                                  >
+                                      Admit
+                                  </button>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          )}
       </div>
     </aside>
   </main>
@@ -1556,6 +1663,7 @@ export default function VideoMeetComponent() {
       onReaction={handleReaction}
       onPiP={handlePiP}
       username={username}
+      meetingId={meetingId}
   />
   
   <Toast 

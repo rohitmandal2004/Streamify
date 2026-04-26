@@ -15,6 +15,7 @@ import MoodIcon from '@mui/icons-material/Mood';
 import PersonIcon from '@mui/icons-material/Person';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 const DrawerItem = ({ icon: Icon, label, onClick, active = false, activeColor = "bg-blue-600", disabled = false }) => (
     <button
@@ -54,7 +55,8 @@ const OptionsDrawer = ({
     totalParticipants = 1,
     onReaction,
     onPiP,
-    username = ''
+    username = '',
+    meetingId = ''
 }) => {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     
@@ -180,8 +182,7 @@ const OptionsDrawer = ({
                             <DrawerItem
                                 icon={ChatIcon}
                                 label="Chat"
-                                onClick={isMobile ? () => onShowToast("Chat is coming soon to mobile.", "info") : onChat}
-                                disabled={isMobile}
+                                onClick={onChat}
                             />
 
                             {/* PiP */}
@@ -197,7 +198,7 @@ const OptionsDrawer = ({
                             <DrawerItem
                                 icon={isScreenSharing ? StopScreenShareIcon : ScreenShareIcon}
                                 label={isScreenSharing ? "Stop Share" : "Screen Share"}
-                                onClick={isMobile ? () => onShowToast("Screen sharing is only available on desktop.", "warning") : onScreenShare}
+                                onClick={isMobile ? () => onShowToast("Screen sharing is coming soon to mobile.", "info") : onScreenShare}
                                 active={isScreenSharing}
                                 disabled={isMobile}
                             />
@@ -227,12 +228,34 @@ const OptionsDrawer = ({
                                 disabled={isMobile}
                             />
 
-                            {/* Report */}
+                             {/* Report */}
                             <DrawerItem
                                 icon={ReportProblemIcon}
                                 label="Report"
                                 onClick={() => {}}
                             />
+                        </div>
+
+                        {/* Meeting Info Section */}
+                        <div className="px-4 py-4 mt-2 bg-white/5 border-y border-white/5">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Meeting Information</span>
+                            </div>
+                            <div className="bg-black/40 rounded-xl p-3 border border-white/10 flex items-center justify-between gap-3">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-0.5">Meeting ID</span>
+                                    <code className="text-sm text-indigo-300 font-mono font-bold tracking-wider">{meetingId}</code>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(meetingId);
+                                        onShowToast("Meeting ID copied", "success");
+                                    }}
+                                    className="p-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/20 transition-all active:scale-95"
+                                >
+                                    <ContentCopyIcon fontSize="small" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Host: Waiting Room Section */}
