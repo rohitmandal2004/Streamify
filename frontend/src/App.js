@@ -15,6 +15,7 @@ const History = lazy(() => import('./pages/history'));
 const SettingsPage = lazy(() => import('./pages/settings'));
 const CalendarPage = lazy(() => import('./pages/calendar'));
 const ProfilePage = lazy(() => import('./pages/profile'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const FullPageLoader = () => (
   <div className="flex w-full h-screen items-center justify-center bg-[var(--background)]">
@@ -50,6 +51,7 @@ function App() {
                 <Route path='/settings' element={<SettingsPage />} />
                 <Route path='/calendar' element={<CalendarPage />} />
                 <Route path='/:url' element={<VideoMeetComponent />} />
+                <Route path='*' element={<NotFound />} />
               </Routes>
             </Suspense>
           </AnimatePresence>

@@ -9,6 +9,8 @@ import UserDropdown from '../components/UserDropdown';
 
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import Logo from '../components/Logo';
 import { Footer } from '../components/ui/footer';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
@@ -22,6 +24,8 @@ function HomeComponent() {
   const [meetingCode, setMeetingCode] = useState('');
   const { userData, addToUserHistory, handleLogout } = useContext(AuthContext);
   const [open, setOpen] = useState(true);
+  const [createdCode, setCreatedCode] = useState('');
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const [reviewContent, setReviewContent] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
@@ -110,7 +114,20 @@ function HomeComponent() {
 
   const handleCreateMeeting = () => {
     const newCode = generateMeetingCode();
-    navigate(`/${newCode}`);
+    setCreatedCode(newCode);
+    setInviteCopied(false);
+  };
+
+  const handleCopyInvite = () => {
+    const link = `${window.location.origin}/${createdCode}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2500);
+    });
+  };
+
+  const handleGoToMeeting = () => {
+    navigate(`/${createdCode}`);
   };
 
   const handleKeyPress = (e) => {
@@ -264,18 +281,62 @@ function HomeComponent() {
                 <p className="text-sm sm:text-base text-gray-400 mb-6 sm:mb-8 min-h-[3rem] sm:h-12">Start a new meeting and invite others to join.</p>
 
                 <div className="space-y-4 mt-auto">
-                  <div className="min-h-[3rem] sm:h-[74px] flex items-end">
-                    <p className="text-xs sm:text-sm text-gray-500">Get a link that you can share with anyone.</p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    fullWidth
-                    onClick={handleCreateMeeting}
-                    className="hover:bg-purple-500/10 hover:text-purple-400 hover:border-purple-500/50"
-                  >
-                    Create Meeting
-                  </Button>
+                  {createdCode ? (
+                    <>
+                      <div className="bg-black/30 backdrop-blur-md rounded-xl p-3 border border-white/10">
+                        <p className="text-xs text-gray-500 mb-1.5">Meeting Link</p>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-sm text-purple-300 font-mono truncate">{window.location.origin}/{createdCode}</code>
+                          <button
+                            onClick={handleCopyInvite}
+                            className={`p-2 rounded-lg transition-all text-sm flex-shrink-0 ${
+                              inviteCopied
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10'
+                            }`}
+                            title="Copy invite link"
+                          >
+                            {inviteCopied ? <CheckIcon style={{ fontSize: 16 }} /> : <ContentCopyIcon style={{ fontSize: 16 }} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="secondary"
+                          size="lg"
+                          fullWidth
+                          onClick={() => { setCreatedCode(''); setInviteCopied(false); }}
+                          className="hover:bg-white/10"
+                        >
+                          New Code
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          fullWidth
+                          onClick={handleGoToMeeting}
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        >
+                          Join
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="min-h-[3rem] sm:h-[74px] flex items-end">
+                        <p className="text-xs sm:text-sm text-gray-500">Get a link that you can share with anyone.</p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                        onClick={handleCreateMeeting}
+                        className="hover:bg-purple-500/10 hover:text-purple-400 hover:border-purple-500/50"
+                      >
+                        Create Meeting
+                      </Button>
+                    </>
+                  )}
                 </div>
               </motion.div>
             </div>

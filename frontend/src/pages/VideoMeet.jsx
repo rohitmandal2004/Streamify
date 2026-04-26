@@ -46,6 +46,7 @@ import Logo from '../components/Logo';
 
 import { useNavigate, useParams } from 'react-router-dom';
 import server from '../environment';
+import { playJoinSound, playLeaveSound, playChatSound } from '../utils/notificationSounds';
 
 const server_url = server;
 
@@ -427,7 +428,10 @@ export default function VideoMeetComponent() {
             });
 
             // Listeners
-            socketRef.current.on('chat-message', addMessage)
+            socketRef.current.on('chat-message', (data, sender, socketIdSender) => {
+                addMessage(data, sender, socketIdSender);
+                if (socketIdSender !== socketIdRef.current) playChatSound();
+            })
 
             // Raise Hand
             socketRef.current.on('raise-hand', (socketId, username) => {
@@ -466,6 +470,7 @@ export default function VideoMeetComponent() {
 
         // User Left
         socketRef.current.on('user-left', (id) => {
+            playLeaveSound();
             // FIX: Explicitly close the connection to stop the video stream immediately on other clients
             if (connections[id]) {
                 connections[id].close();
@@ -490,6 +495,7 @@ export default function VideoMeetComponent() {
 
         // User Joined
         socketRef.current.on('user-joined', (id, clients, usernamesList) => {
+            playJoinSound();
             // Determine Host (meeting creator logic could be here, or just first user logic in UI)
 
             // Update names

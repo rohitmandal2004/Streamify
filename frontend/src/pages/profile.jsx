@@ -5,6 +5,9 @@ import { Button } from "../components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Camera, User, Mail, Phone, Save } from "lucide-react";
 import { Component as EtheralShadow } from '../components/ui/etheral-shadow';
+import Logo from '../components/Logo';
+import UserDropdown from '../components/UserDropdown';
+import { motion } from 'framer-motion';
 
 function ProfilePage() {
     const { userData, handleProfileUpdate } = useContext(AuthContext);
@@ -55,7 +58,18 @@ function ProfilePage() {
             {/* Background elements */}
             <div className="absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-indigo-900/40 to-transparent pointer-events-none -z-10"></div>
 
-            <div className="flex-1 w-full max-w-4xl mx-auto p-4 md:p-8 relative z-10 pt-20">
+            {/* Mobile Navbar */}
+            <motion.nav
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl sticky top-0 md:hidden"
+                initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.5 }}
+            >
+                <div className="flex items-center"><Logo size="sm" clickable={true} /></div>
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <UserDropdown userInitial={userData?.name ? userData.name[0] : "U"} />
+                </div>
+            </motion.nav>
+
+            <div className="flex-1 w-full max-w-4xl mx-auto p-4 md:p-8 relative z-10 pt-8 md:pt-20">
 
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold dark:text-white flex items-center gap-3">
