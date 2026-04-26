@@ -240,8 +240,11 @@ export default function VideoMeetComponent() {
 
     // --- Media Handling ---
     let getMedia = () => {
-        setVideo(videoAvailable);
-        setAudio(audioAvailable);
+        // Carry over the lobby preview state to the meeting
+        const shouldVideo = videoAvailable && previewCamOn;
+        const shouldAudio = audioAvailable && previewMicOn;
+        setVideo(shouldVideo);
+        setAudio(shouldAudio);
         connectToSocketServer();
     }
 
@@ -950,31 +953,174 @@ export default function VideoMeetComponent() {
         }
     };
 
+    // --- Pre-join preview states ---
+    const [previewMicOn, setPreviewMicOn] = useState(true);
+    const [previewCamOn, setPreviewCamOn] = useState(true);
+
+    const togglePreviewMic = () => {
+        if (window.localStream) {
+            const audioTrack = window.localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                setPreviewMicOn(audioTrack.enabled);
+            }
+        } else {
+            setPreviewMicOn(prev => !prev);
+        }
+    };
+
+    const togglePreviewCam = () => {
+        if (window.localStream) {
+            const videoTrack = window.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                setPreviewCamOn(videoTrack.enabled);
+            }
+        } else {
+            setPreviewCamOn(prev => !prev);
+        }
+    };
+
     // --- Render ---
     if (askForUsername) {
         return (
             <div className="fixed inset-0 h-[100dvh] flex items-center justify-center p-4 overflow-hidden">
-                <div className="absolute inset-0 z-0">
-                    <EtheralShadow
-                        color="rgba(128, 128, 128, 1)"
-                        animation={{ scale: 100, speed: 90 }}
-                        noise={{ opacity: 1, scale: 1.2 }}
-                        sizing="fill"
-                        showTitle={false}
+                {/* New gradient background */}
+                <div className="absolute inset-0 z-0 bg-[#05060f]">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/50 via-[#05060f] to-purple-950/30" />
+                    <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-indigo-600/8 rounded-full blur-[150px]" />
+                    <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/6 rounded-full blur-[120px]" />
+                    {/* Grid pattern */}
+                    <div className="absolute inset-0 opacity-[0.03]"
+                        style={{
+                            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                            backgroundSize: '60px 60px'
+                        }}
                     />
                 </div>
-                <motion.div className="w-full max-w-lg bg-surface/50 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl relative z-10"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}>
+
+                {/* Logo */}
+                <div className="absolute top-5 left-5 z-20">
+                    <Logo size="sm" clickable={true} />
+                </div>
+
+                <motion.div className="w-full max-w-2xl relative z-10"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                >
+                    {/* Header */}
                     <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-white mb-2">Ready to join?</h2>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="relative aspect-video bg-black/50 rounded-xl overflow-hidden border border-white/5 shadow-inner">
-                            <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} />
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-gray-300 mb-4">
+                            <span className={`w-2 h-2 rounded-full ${previewCamOn ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]'}`} />
+                            {previewCamOn ? 'Camera Preview Active' : 'Camera Off'}
                         </div>
-                        <Input label="Your Name" value={username} onChange={(e) => setUsername(e.target.value)} icon={PersonIcon} autoFocus />
-                        <Button variant="primary" size="lg" fullWidth onClick={() => { if (username.trim()) { setAskForUsername(false); getMedia(); } }} disabled={!username.trim()}>Join Meeting</Button>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">Ready to join?</h2>
+                        <p className="text-gray-400 text-sm">Check your camera and mic before entering the meeting</p>
+                    </div>
+
+                    {/* Main Card */}
+                    <div className="bg-[#0B0D17]/80 backdrop-blur-2xl border border-white/[0.08] rounded-[24px] p-5 sm:p-8 shadow-2xl shadow-black/50">
+                        {/* Video Preview */}
+                        <div className="relative aspect-video bg-black/80 rounded-2xl overflow-hidden border border-white/5 shadow-inner mb-6">
+                            <video ref={localVideoref} autoPlay muted playsInline className={`w-full h-full object-cover transition-opacity duration-300 ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''} ${previewCamOn ? 'opacity-100' : 'opacity-0'}`} />
+                            
+                            {/* Camera off state */}
+                            {!previewCamOn && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0c18]">
+                                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-3 border border-white/10">
+                                        <PersonIcon style={{ fontSize: 36 }} className="text-gray-400" />
+                                    </div>
+                                    <p className="text-gray-500 text-sm font-medium">Camera is off</p>
+                                </div>
+                            )}
+
+                            {/* Overlay controls on video */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-10">
+                                <button
+                                    onClick={togglePreviewMic}
+                                    className={`w-11 h-11 rounded-full backdrop-blur-md border flex items-center justify-center transition-all active:scale-90 ${
+                                        previewMicOn
+                                            ? 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                                            : 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30'
+                                    }`}
+                                    title={previewMicOn ? "Mute Mic" : "Unmute Mic"}
+                                >
+                                    {previewMicOn ? <MicIcon style={{ fontSize: 20 }} /> : <MicOffIcon style={{ fontSize: 20 }} />}
+                                </button>
+                                <button
+                                    onClick={togglePreviewCam}
+                                    className={`w-11 h-11 rounded-full backdrop-blur-md border flex items-center justify-center transition-all active:scale-90 ${
+                                        previewCamOn
+                                            ? 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                                            : 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30'
+                                    }`}
+                                    title={previewCamOn ? "Turn Camera Off" : "Turn Camera On"}
+                                >
+                                    {previewCamOn ? <VideocamIcon style={{ fontSize: 20 }} /> : <VideocamOffIcon style={{ fontSize: 20 }} />}
+                                </button>
+                            </div>
+
+                            {/* Status labels */}
+                            <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+                                {!previewMicOn && (
+                                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-semibold uppercase tracking-wider">
+                                        <MicOffIcon style={{ fontSize: 12 }} />
+                                        Muted
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Name + Join */}
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wider">Display Name</label>
+                                <div className="relative">
+                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">
+                                        <PersonIcon style={{ fontSize: 18 }} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        onKeyPress={(e) => { if (e.key === 'Enter' && username.trim()) { setAskForUsername(false); getMedia(); } }}
+                                        placeholder="Enter your name"
+                                        autoFocus
+                                        className="w-full bg-black/30 border border-white/10 rounded-xl pl-10 pr-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-end">
+                                <button
+                                    onClick={() => { if (username.trim()) { setAskForUsername(false); getMedia(); } }}
+                                    disabled={!username.trim()}
+                                    className="w-full sm:w-auto h-[50px] px-8 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-600/20 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.97] text-sm"
+                                >
+                                    <VideocamIcon style={{ fontSize: 18 }} />
+                                    Join Meeting
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Meeting Info */}
+                        <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                Meeting: {meetingId}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                                <span className={`flex items-center gap-1 ${previewMicOn ? 'text-emerald-500' : 'text-red-400'}`}>
+                                    {previewMicOn ? <MicIcon style={{ fontSize: 12 }} /> : <MicOffIcon style={{ fontSize: 12 }} />}
+                                    {previewMicOn ? 'Mic on' : 'Mic off'}
+                                </span>
+                                <span className="text-white/10">|</span>
+                                <span className={`flex items-center gap-1 ${previewCamOn ? 'text-emerald-500' : 'text-red-400'}`}>
+                                    {previewCamOn ? <VideocamIcon style={{ fontSize: 12 }} /> : <VideocamOffIcon style={{ fontSize: 12 }} />}
+                                    {previewCamOn ? 'Cam on' : 'Cam off'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </motion.div>
             </div>
@@ -984,23 +1130,42 @@ export default function VideoMeetComponent() {
     if (isWaiting) {
         return (
             <div className="fixed inset-0 h-[100dvh] flex flex-col items-center justify-center p-4 overflow-hidden text-center text-white">
-                <div className="absolute inset-0 z-0">
-                    <EtheralShadow
-                        color="rgba(128, 128, 128, 1)"
-                        animation={{ scale: 100, speed: 90 }}
-                        noise={{ opacity: 1, scale: 1.2 }}
-                        sizing="fill"
-                        showTitle={false}
+                <div className="absolute inset-0 z-0 bg-[#05060f]">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/50 via-[#05060f] to-purple-950/30" />
+                    <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-indigo-600/8 rounded-full blur-[150px]" />
+                    <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/6 rounded-full blur-[120px]" />
+                    <div className="absolute inset-0 opacity-[0.03]"
+                        style={{
+                            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                            backgroundSize: '60px 60px'
+                        }}
                     />
                 </div>
+
+                {/* Logo */}
+                <div className="absolute top-5 left-5 z-20">
+                    <Logo size="sm" clickable={true} />
+                </div>
+
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="z-10 bg-surface/30 backdrop-blur-xl p-8 rounded-2xl border border-white/10 max-w-md w-full"
+                    className="z-10 bg-[#0B0D17]/70 backdrop-blur-2xl p-10 rounded-[24px] border border-white/10 max-w-md w-full shadow-2xl shadow-black/40"
                 >
-                    <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                    <div className="relative w-20 h-20 mx-auto mb-6">
+                        <div className="absolute inset-0 rounded-full border-[3px] border-indigo-500/20" />
+                        <div className="absolute inset-0 rounded-full border-[3px] border-t-indigo-500 animate-spin" />
+                        <div className="absolute inset-3 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                            <PersonIcon className="text-indigo-400" style={{ fontSize: 24 }} />
+                        </div>
+                    </div>
                     <h2 className="text-2xl font-bold mb-2">Waiting for Host</h2>
-                    <p className="text-gray-300">The host will let you in shortly.</p>
+                    <p className="text-gray-400 text-sm mb-6">The host will let you in shortly. Please wait.</p>
+                    <div className="flex items-center justify-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0ms]" />
+                        <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:150ms]" />
+                        <span className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce [animation-delay:300ms]" />
+                    </div>
                 </motion.div>
             </div>
         )
@@ -1256,18 +1421,18 @@ export default function VideoMeetComponent() {
         {!video ? <VideocamOffIcon /> : <VideocamIcon />}
       </button>
 
-      {/* Screen Share */}
+      {/* Screen Share - desktop only */}
       <button onClick={() => setScreen(!screen)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg hidden sm:flex ${screen ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
         <ScreenShareIcon />
       </button>
 
-      {/* PiP Mode */}
-      <button onClick={handlePiP} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg hidden sm:flex">
+      {/* PiP Mode - visible on ALL devices */}
+      <button onClick={handlePiP} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg">
          <PictureInPictureAltIcon />
       </button>
 
-      {/* Reactions Menu */}
-      <div className="relative hidden sm:block">
+      {/* Reactions Menu - visible on ALL devices */}
+      <div className="relative">
           <button onClick={() => setShowReactionsMenu(!showReactionsMenu)} className={`w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl border transition-all active:scale-95 shadow-lg ${showReactionsMenu ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-surface/50 border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white'}`}>
               <MoodIcon />
           </button>
@@ -1310,9 +1475,9 @@ export default function VideoMeetComponent() {
          <ClosedCaptionIcon fontSize="small" />
       </button>
 
-      {/* More Options (Mobile Only) */}
+      {/* Participants (Mobile) */}
       <button onClick={() => setShowOptionsDrawer(true)} className="w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface/50 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all active:scale-95 shadow-lg sm:hidden">
-         <MoreVertIcon />
+         <GroupIcon />
       </button>
       
       {/* Leave Button */}
