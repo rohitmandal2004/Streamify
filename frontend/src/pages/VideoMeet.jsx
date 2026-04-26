@@ -28,6 +28,7 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import MoodIcon from '@mui/icons-material/Mood';
 import ReplyIcon from '@mui/icons-material/Reply';
+import ShareIcon from '@mui/icons-material/Share';
 import { AnimatePresence } from 'framer-motion';
 
 import SelfVideo from '../components/SelfVideo';
@@ -219,8 +220,51 @@ export default function VideoMeetComponent() {
             setAudioAvailable(!!audioInput);
         });
 
+        const updateAllVideoSinks = async (deviceId) => {
+            if (typeof HTMLMediaElement.prototype.setSinkId !== 'undefined') {
+                const videoElements = document.querySelectorAll('video');
+                for (let video of videoElements) {
+                    try {
+                        await video.setSinkId(deviceId);
+                    } catch (error) {
+                        console.warn('Failed to set audio output device:', error);
+                    }
+                }
+            }
+        };
+
+        const handleDeviceChange = async () => {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                
+                const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                
+                const headsetOut = audioOutputs.find(d => d.label.toLowerCase().includes('bluetooth') || d.label.toLowerCase().includes('headset') || d.label.toLowerCase().includes('hands-free'));
+                const headsetIn = audioInputs.find(d => d.label.toLowerCase().includes('bluetooth') || d.label.toLowerCase().includes('headset') || d.label.toLowerCase().includes('hands-free'));
+                
+                const newOutputId = headsetOut ? headsetOut.deviceId : 'default';
+                const newInputId = headsetIn ? headsetIn.deviceId : 'default';
+
+                setLocalSettings(prev => {
+                    const newSettings = { ...prev, audioOutputId: newOutputId, audioInputId: newInputId };
+                    if (prev.audioInputId !== newInputId && window.localStream) {
+                        setTimeout(getUserMedia, 500); 
+                    }
+                    return newSettings;
+                });
+                
+                updateAllVideoSinks(newOutputId);
+            } catch (err) {
+                console.warn('Error handling device change:', err);
+            }
+        };
+
+        navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+
         // Cleanup function for unmounting
         return () => {
+            navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
             if (socketRef.current) {
                 socketRef.current.disconnect();
             }
@@ -257,8 +301,17 @@ export default function VideoMeetComponent() {
         // This prevents the race condition where peer connections are created
         // with a black/silence stream because getUserMedia hasn't completed yet.
         try {
+            let isHeadset = localSettings.audioInputId !== 'default';
             let videoConstraints = shouldVideo ? { facingMode: facingMode } : false;
-            let audioConstraints = shouldAudio ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false;
+            let audioConstraints = shouldAudio ? { 
+                echoCancellation: !isHeadset, 
+                noiseSuppression: localSettings.noiseSuppression || true, 
+                autoGainControl: !isHeadset 
+            } : false;
+            
+            if (audioConstraints && isHeadset) {
+                audioConstraints.deviceId = { exact: localSettings.audioInputId };
+            }
 
             if (videoConstraints || audioConstraints) {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -298,10 +351,11 @@ export default function VideoMeetComponent() {
                 videoConstraints.frameRate = { ideal: 15 };
             }
 
+            let isHeadset = localSettings.audioInputId !== 'default';
             let audioConstraints = audio ? { 
-                echoCancellation: true, 
+                echoCancellation: !isHeadset, 
                 noiseSuppression: localSettings.noiseSuppression, 
-                autoGainControl: true 
+                autoGainControl: !isHeadset 
             } : false;
             if (audioConstraints && localSettings.audioInputId !== 'default') {
                 audioConstraints.deviceId = { exact: localSettings.audioInputId };
@@ -571,6 +625,9 @@ export default function VideoMeetComponent() {
             }
 
             clients.forEach((socketListId) => {
+                if (socketListId === socketIdRef.current) return;
+                if (connections[socketListId]) return;
+
                 connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
 
                 connections[socketListId].onicecandidate = function (event) {
@@ -1308,6 +1365,20 @@ export default function VideoMeetComponent() {
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
         <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgb(99,102,241)]"></span>
         <span className="text-xs font-bold tracking-widest text-indigo-300"><CallTimer startTime={callStartTime} /></span>
+      </div>
+      <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+           onClick={() => {
+               if (navigator.share) {
+                   navigator.share({ title: 'Join my Streamify meeting', url: window.location.href }).catch(() => {});
+               } else {
+                   navigator.clipboard.writeText(window.location.href);
+                   handleShowToast('Link copied to clipboard!', 'success');
+               }
+           }}
+           title="Share Meeting"
+      >
+        <span className="text-xs font-mono font-bold tracking-widest text-gray-300">{meetingId}</span>
+        <ShareIcon sx={{ fontSize: 14 }} className="text-indigo-400" />
       </div>
     </div>
     
