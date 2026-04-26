@@ -14,9 +14,11 @@ import StopIcon from '@mui/icons-material/Stop';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CloseIcon from '@mui/icons-material/Close';
 
-import ScreenShareIcon from '@mui/icons-material/ScreenShare'; // Added ScreenShareIcon if missing, and Person/MoreVert
+import ScreenShareIcon from '@mui/icons-material/ScreenShare'; 
 import PersonIcon from '@mui/icons-material/Person';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
 import BlockIcon from '@mui/icons-material/Block';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem'; // Import Icon
@@ -134,6 +136,13 @@ export default function VideoMeetComponent() {
     // Join Notifications (top-right popups)
     const [joinNotifications, setJoinNotifications] = useState([]);
     
+    // Focus & Active Speaker
+    const [pinnedUser, setPinnedUser] = useState(null);
+    const [activeSpeakerId, setActiveSpeakerId] = useState(null);
+    const audioContextRef = useRef(null);
+    const analyserNodesRef = useRef({});
+    const speakerIntervalRef = useRef(null);
+
     const [toastConfig, setToastConfig] = useState({ open: false, message: '', type: 'info' });
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
@@ -255,12 +264,14 @@ export default function VideoMeetComponent() {
                 });
                 
                 updateAllVideoSinks(newOutputId);
+
             } catch (err) {
-                console.warn('Error handling device change:', err);
+                console.warn("Error checking devices:", err);
             }
         };
 
         navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+        handleDeviceChange(); // initial check
 
         // Cleanup function for unmounting
         return () => {
@@ -274,6 +285,86 @@ export default function VideoMeetComponent() {
             stopRecognition(); // Stop speech recognition on unmount
         };
     }, []);
+
+    // Active Speaker Detection
+    useEffect(() => {
+        if (!audioContextRef.current) {
+            try {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) { console.warn("AudioContext not supported"); }
+        }
+
+        const ctx = audioContextRef.current;
+        if (!ctx) return;
+
+        const attachAnalyser = (id, stream) => {
+            if (!stream || stream.getAudioTracks().length === 0) return;
+            if (analyserNodesRef.current[id]) return;
+            try {
+                const source = ctx.createMediaStreamSource(stream);
+                const analyser = ctx.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                analyserNodesRef.current[id] = analyser;
+            } catch (e) { console.warn("Could not attach analyser", e); }
+        };
+
+        if (window.localStream) attachAnalyser('local', window.localStream);
+        videos.forEach(v => attachAnalyser(v.socketId, v.stream));
+
+        const currentIds = ['local', ...videos.map(v => v.socketId)];
+        Object.keys(analyserNodesRef.current).forEach(id => {
+            if (!currentIds.includes(id)) {
+                delete analyserNodesRef.current[id];
+            }
+        });
+
+        if (speakerIntervalRef.current) clearInterval(speakerIntervalRef.current);
+        speakerIntervalRef.current = setInterval(() => {
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            
+            let maxVolume = 0;
+            let currentSpeaker = null;
+            const dataArray = new Uint8Array(256);
+            
+            for (const [id, analyser] of Object.entries(analyserNodesRef.current)) {
+                if (id === 'local' && !audio) continue;
+                if (id !== 'local' && participantsMuted[id]) continue;
+
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+                const average = sum / dataArray.length;
+                
+                if (average > maxVolume && average > 15) {
+                    maxVolume = average;
+                    currentSpeaker = id;
+                }
+            }
+
+            if (currentSpeaker !== activeSpeakerId) {
+                setActiveSpeakerId(prev => currentSpeaker || prev);
+            }
+            
+            if (!currentSpeaker) {
+                if (!window.silenceTimer) {
+                    window.silenceTimer = setTimeout(() => {
+                        setActiveSpeakerId(null);
+                        window.silenceTimer = null;
+                    }, 2000);
+                }
+            } else {
+                if (window.silenceTimer) {
+                    clearTimeout(window.silenceTimer);
+                    window.silenceTimer = null;
+                }
+            }
+        }, 500);
+
+        return () => {
+            if (speakerIntervalRef.current) clearInterval(speakerIntervalRef.current);
+        };
+    }, [videos, audio, participantsMuted, activeSpeakerId]);
 
     // Track whether we've already connected to prevent double-calls
     const hasConnectedRef = useRef(false);
@@ -518,6 +609,7 @@ export default function VideoMeetComponent() {
                 setWaitingList(prev => [...prev, user]);
                 setJoinNotifications(prev => [...prev, user]);
                 playJoinSound();
+                handleShowToast(`${user.username} wants to join the call`, "info");
             });
 
             socketRef.current.on('waiting-list-update', (list) => {
@@ -584,15 +676,17 @@ export default function VideoMeetComponent() {
         // User Left
         socketRef.current.on('user-left', (id) => {
             playLeaveSound();
-            // FIX: Explicitly close the connection to stop the video stream immediately on other clients
+            
             if (connections[id]) {
                 connections[id].close();
                 delete connections[id];
             }
 
             setVideos((videos) => videos.filter((video) => video.socketId !== id))
-            // Clean up map
+            // Clean up map and show toast
             setParticipantNames(prev => {
+                const leavingUserName = prev[id] || "A participant";
+                handleShowToast(`${leavingUserName} left the call`, 'info');
                 const next = { ...prev };
                 delete next[id];
                 return next;
@@ -622,6 +716,11 @@ export default function VideoMeetComponent() {
                 setParticipantNames(prev => ({ ...prev, ...namesMap }));
                 // Update existing videos with names
                 setVideos(prev => prev.map(v => ({ ...v, username: namesMap[v.socketId] || v.username })));
+                
+                if (id !== socketIdRef.current) {
+                    const newUserName = namesMap[id] || "A participant";
+                    handleShowToast(`${newUserName} joined the call`, 'success');
+                }
             }
 
             clients.forEach((socketListId) => {
@@ -1403,91 +1502,150 @@ export default function VideoMeetComponent() {
     <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse pointer-events-none [animation-delay:2s]"></div>
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,6,15,0.8)_100%)] pointer-events-none"></div>
 
-    {/* Video Grid */}
-    <div className={`flex-1 relative z-10 min-h-0 ${totalParticipants > 1 ? 'grid gap-2 md:gap-4' : 'flex'}`}
-        style={{
-            gridTemplateColumns: totalParticipants > 1 ? `repeat(auto-fit, minmax(${totalParticipants > 4 ? '200px' : '300px'}, 1fr))` : 'none',
-            gridAutoRows: '1fr'
-        }}
-    >
-      {/* Local Video */}
-      <div className={`relative rounded-xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group min-h-0 ${totalParticipants === 1 ? 'w-full h-full' : ''}`}>
-          {video ? (
-              <video 
-                ref={localVideoref} 
-                autoPlay 
-                muted 
-                playsInline 
-                onLoadedMetadata={(e) => e.target.play()}
-                className={`w-full h-full object-cover ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} 
-              />
-          ) : (
-              <div className="w-full h-full flex items-center justify-center bg-surface/20">
-                  <div className="text-center">
-                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-indigo-500/20 flex items-center justify-center text-white font-bold text-2xl md:text-3xl mx-auto mb-4 border border-indigo-500/30">
-                          {username[0]?.toUpperCase()}
-                      </div>
-                      <p className="text-white/40 text-xs md:text-sm font-medium">Your camera is off</p>
-                  </div>
-              </div>
-          )}
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
-            {!audio ? <MicOffIcon fontSize="small" className="text-red-400" /> : <MicIcon fontSize="small" className="text-white/80" />}
-            <span className="text-[11px] font-bold tracking-wide text-white">You {raisedHands['local'] ? "✋" : ""}</span>
-          </div>
-          {isRecording && (
-            <div className="absolute top-4 right-4 bg-red-500/80 backdrop-blur-md border border-red-500/50 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
-              <FiberManualRecordIcon fontSize="small" className="text-white animate-pulse" />
-              <span className="text-[10px] font-bold text-white uppercase tracking-widest">Rec</span>
-            </div>
-          )}
-      </div>
+    {(() => {
+        const handleTogglePin = (id) => {
+            setPinnedUser(prev => prev === id ? null : id);
+        };
 
-      {/* Remote Videos */}
-      {videos.map((v) => (
-          <div key={v.socketId} className="relative rounded-xl md:rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl group min-h-0">
-              {!participantsVideoOff[v.socketId] ? (
-                  <video 
-                    data-socket={v.socketId} 
-                    ref={ref => { if (ref && v.stream) ref.srcObject = v.stream; }} 
-                    autoPlay 
-                    playsInline 
-                    onLoadedMetadata={(e) => e.target.play()}
-                    className="w-full h-full object-cover" 
-                  />
-              ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-surface/20">
-                      <div className="text-center">
-                          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-purple-500/20 flex items-center justify-center text-white font-bold text-2xl md:text-3xl mx-auto mb-4 border border-purple-500/30">
-                              {v.username[0]?.toUpperCase()}
-                          </div>
-                          <p className="text-white/40 text-xs md:text-sm font-medium">Camera is off</p>
-                      </div>
-                  </div>
-              )}
-              <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
-                {participantsMuted[v.socketId] ? <MicOffIcon fontSize="small" className="text-red-400" /> : <MicIcon fontSize="small" className="text-white/80" />}
-                <span className="text-[11px] font-bold tracking-wide text-white">{v.username} {raisedHands[v.socketId] ? "✋" : ""}</span>
-              </div>
-              {/* Host Controls */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                  <button
-                      onClick={() => setActiveMenu(activeMenu === v.socketId ? null : v.socketId)}
-                      className="p-1 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-white/10"
-                  >
-                      <MoreVertIcon fontSize="small" />
-                  </button>
-                  {activeMenu === v.socketId && (
-                      <div className="absolute right-0 top-8 bg-surface/90 backdrop-blur-xl rounded-xl border border-white/10 py-1 w-28 overflow-hidden shadow-xl">
-                          <button onClick={() => handleMuteUser(v.socketId)} className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors">Mute Audio</button>
-                          <button onClick={() => handleKickUser(v.socketId)} className="w-full text-left px-3 py-2 text-xs hover:bg-red-500/20 text-red-400 transition-colors">Kick User</button>
-                      </div>
-                  )}
-              </div>
-            </div>
-        ))}
+        const renderVideoTile = (p, isSidebar = false) => {
+            const isLocal = p.isLocal;
+            const id = p.id;
+            const isActiveSpeaker = activeSpeakerId === id;
+            
+            const containerClasses = `relative overflow-hidden bg-black border shadow-2xl group min-h-0 transition-all duration-300
+                ${isSidebar ? 'w-[calc(50%-0.25rem)] md:w-[calc(33.333%-0.5rem)] lg:w-[calc(25%-0.5rem)] h-[160px] sm:h-[180px] md:h-[200px] rounded-xl flex-shrink-0' : 'rounded-xl md:rounded-3xl w-full h-full'}
+                ${isActiveSpeaker ? 'border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.6)] z-20' : 'border-white/10'}
+            `;
+
+            if (isLocal) {
+                return (
+                    <div key="local" className={containerClasses}>
+                        {video ? (
+                            <video 
+                                ref={el => {
+                                    localVideoref.current = el;
+                                    if (el && window.localStream && el.srcObject !== window.localStream) {
+                                        el.srcObject = window.localStream;
+                                    }
+                                }} 
+                                autoPlay 
+                                muted 
+                                playsInline 
+                                className={`w-full h-full ${pinnedUser === 'local' ? 'object-contain bg-black' : 'object-cover'} ${localSettings.mirrorVideo ? 'scale-x-[-1]' : ''}`} 
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-surface/20">
+                                <div className="text-center">
+                                    <div className={`${isSidebar ? 'w-12 h-12 text-xl' : 'w-20 h-20 md:w-24 md:h-24 text-2xl md:text-3xl'} rounded-full bg-indigo-500/20 flex items-center justify-center text-white font-bold mx-auto mb-2 border border-indigo-500/30`}>
+                                        {username[0]?.toUpperCase()}
+                                    </div>
+                                    {!isSidebar && <p className="text-white/40 text-xs md:text-sm font-medium">Your camera is off</p>}
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
+                            {!audio ? <MicOffIcon sx={{fontSize: isSidebar?14:18}} className="text-red-400" /> : <MicIcon sx={{fontSize: isSidebar?14:18}} className="text-white/80" />}
+                            <span className="text-[10px] md:text-[11px] font-bold tracking-wide text-white truncate max-w-[80px]">You {raisedHands['local'] ? "✋" : ""}</span>
+                        </div>
+
+                        {isRecording && !isSidebar && (
+                            <div className="absolute top-2 md:top-4 right-2 md:right-4 bg-red-500/80 backdrop-blur-md border border-red-500/50 px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1 md:gap-2 shadow-lg">
+                                <FiberManualRecordIcon sx={{fontSize: 14}} className="text-white animate-pulse" />
+                                <span className="text-[9px] md:text-[10px] font-bold text-white uppercase tracking-widest">Rec</span>
+                            </div>
+                        )}
+
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
+                            <button onClick={() => handleTogglePin('local')} className={`p-1 md:p-1.5 rounded-lg bg-black/50 backdrop-blur-md border ${pinnedUser === 'local' ? 'border-indigo-400 text-indigo-400' : 'border-white/10 text-white'} hover:bg-white/10`}>
+                                {pinnedUser === 'local' ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div key={id} className={containerClasses}>
+                    {!participantsVideoOff[id] ? (
+                        <video 
+                            data-socket={id} 
+                            ref={ref => { if (ref && p.stream && ref.srcObject !== p.stream) ref.srcObject = p.stream; }} 
+                            autoPlay 
+                            playsInline 
+                            className={`w-full h-full ${pinnedUser === id ? 'object-contain bg-black' : 'object-cover'}`} 
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface/20">
+                            <div className="text-center">
+                                <div className={`${isSidebar ? 'w-12 h-12 text-xl' : 'w-20 h-20 md:w-24 md:h-24 text-2xl md:text-3xl'} rounded-full bg-purple-500/20 flex items-center justify-center text-white font-bold mx-auto mb-2 border border-purple-500/30`}>
+                                    {p.username[0]?.toUpperCase()}
+                                </div>
+                                {!isSidebar && <p className="text-white/40 text-xs md:text-sm font-medium">Camera is off</p>}
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
+                        {participantsMuted[id] ? <MicOffIcon sx={{fontSize: isSidebar?14:18}} className="text-red-400" /> : <MicIcon sx={{fontSize: isSidebar?14:18}} className="text-white/80" />}
+                        <span className="text-[10px] md:text-[11px] font-bold tracking-wide text-white truncate max-w-[80px]">{p.username} {raisedHands[id] ? "✋" : ""}</span>
+                    </div>
+
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
+                        <button onClick={() => handleTogglePin(id)} className={`p-1 md:p-1.5 rounded-lg bg-black/50 backdrop-blur-md border ${pinnedUser === id ? 'border-indigo-400 text-indigo-400' : 'border-white/10 text-white'} hover:bg-white/10`}>
+                            {pinnedUser === id ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+                        </button>
+                        {!isSidebar && (
+                            <div className="relative">
+                                <button
+                                    onClick={() => setActiveMenu(activeMenu === id ? null : id)}
+                                    className="p-1 md:p-1.5 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-white/10"
+                                >
+                                    <MoreVertIcon fontSize="small" />
+                                </button>
+                                {activeMenu === id && (
+                                    <div className="absolute right-0 top-10 bg-surface/90 backdrop-blur-xl rounded-xl border border-white/10 py-1 w-28 overflow-hidden shadow-xl z-50">
+                                        <button onClick={() => handleMuteUser(id)} className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors">Mute Audio</button>
+                                        <button onClick={() => handleKickUser(id)} className="w-full text-left px-3 py-2 text-xs hover:bg-red-500/20 text-red-400 transition-colors">Kick User</button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const allParticipants = [
+            { id: 'local', isLocal: true },
+            ...videos.map(v => ({ id: v.socketId, isLocal: false, ...v }))
+        ];
+
+        const mainAreaParticipants = pinnedUser ? allParticipants.filter(p => p.id === pinnedUser) : allParticipants;
+        const sidebarParticipants = pinnedUser ? allParticipants.filter(p => p.id !== pinnedUser) : [];
+
+        return (
+    <div className={`flex-1 relative z-10 min-h-0 flex gap-2 md:gap-4 ${pinnedUser ? 'flex-col overflow-y-auto snap-y snap-mandatory custom-scrollbar' : 'flex-col'}`}>
         
+        {/* Main Grid / Pinned Area */}
+        <div className={`min-h-0 ${pinnedUser ? 'w-full h-full shrink-0 snap-center' : 'flex-1'} ${(!pinnedUser && totalParticipants > 1) ? 'grid gap-2 md:gap-4' : 'flex'}`}
+            style={{
+                gridTemplateColumns: (!pinnedUser && totalParticipants > 1) ? `repeat(auto-fit, minmax(${totalParticipants > 4 ? '150px' : '250px'}, 1fr))` : 'none',
+                gridAutoRows: (!pinnedUser && totalParticipants > 1) ? '1fr' : 'none'
+            }}
+        >
+            {mainAreaParticipants.map(p => renderVideoTile(p))}
+        </div>
 
+        {/* Sidebar */}
+        {pinnedUser && (
+            <div className="w-full h-full shrink-0 snap-center flex flex-row flex-wrap content-start gap-2 overflow-y-auto custom-scrollbar pr-1 pb-1 md:pb-0">
+                {sidebarParticipants.map(p => renderVideoTile(p, true))}
+            </div>
+        )}
+    </div>
+        );
+    })()}
 
       {/* Captions Overlay */}
       {captionText.text && (
@@ -1515,7 +1673,6 @@ export default function VideoMeetComponent() {
               ))}
           </AnimatePresence>
       </div>
-    </div>
     
     {/* Right Side Panel (Chat & Participants) */}
     <aside className={`${showChat ? 'absolute inset-2 sm:inset-4 z-[70] flex' : 'hidden lg:flex'} w-auto lg:w-80 h-[calc(100%-1rem)] lg:h-full flex-col rounded-2xl lg:rounded-3xl bg-[#0B0D17]/95 lg:bg-surface/30 backdrop-blur-3xl lg:backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden`}>
