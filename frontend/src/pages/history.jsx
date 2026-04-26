@@ -12,6 +12,7 @@ import { LayoutDashboard, UserCog, Settings, LogOut, CalendarDays } from 'lucide
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { cn } from '../lib/utils';
 import Logo from '../components/Logo';
+import UserDropdown from '../components/UserDropdown';
 import { Skeleton } from '../components/ui/skeleton';
 import withAuth from '../utils/withAuth';
 
@@ -91,27 +92,50 @@ function History() {
       </Sidebar>
 
       <div className="flex flex-1 overflow-y-auto w-full relative h-screen">
-        <div className="min-h-full bg-transparent relative flex flex-col w-full p-6 sm:p-10 pb-32 md:pb-10">
+        <div className="min-h-full bg-transparent relative flex flex-col w-full">
           {/* Background Ambience */}
           <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none w-full h-full">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px]" />
           </div>
 
+          {/* Navbar - Mobile Optimized */}
+          <motion.nav
+            className="w-full px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl sticky top-0 md:hidden"
+            initial={{ y: -100 }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex items-center">
+              <Logo size="sm" clickable={true} />
+            </div>
+            <div className="flex items-center gap-2 sm:gap-4">
+              <UserDropdown userInitial={userData?.name ? userData.name[0] : "U"} />
+            </div>
+          </motion.nav>
+
+          <div className="flex-1 w-full p-6 sm:p-10 pb-32 md:pb-10 relative z-10">
+
           <div className="max-w-7xl mx-auto w-full z-10 relative">
             <motion.div
-              className="text-center md:text-left mb-12 mt-4"
+              className="relative overflow-hidden rounded-[32px] border border-white/10 bg-black/50 shadow-2xl mb-12 mt-4 p-8 md:p-12"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <div className="flex items-center gap-4 justify-center md:justify-start mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
-                  <HistoryIcon className="text-white" style={{ fontSize: 32 }} />
+              <div 
+                  className="absolute inset-0 z-0 bg-cover bg-center opacity-30 blur-[2px]"
+                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=2560&auto=format&fit=crop')` }}
+              />
+              <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#0B0D17] via-[#0B0D17]/80 to-transparent" />
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-[24px] flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.1)] border border-white/20">
+                  <HistoryIcon className="text-white drop-shadow-lg" style={{ fontSize: 40 }} />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold mb-1">Your Meeting History</h1>
-                  <p className="text-gray-400">View and rejoin your previous meetings</p>
+                  <h1 className="text-4xl md:text-5xl font-extrabold mb-3 text-white drop-shadow-md tracking-tight">Your Meeting History</h1>
+                  <p className="text-lg text-gray-300 font-medium max-w-xl">View and rejoin your previous meetings with our high-fidelity, seamless platform experience.</p>
                 </div>
               </div>
             </motion.div>
@@ -234,6 +258,7 @@ function History() {
                 })}
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>

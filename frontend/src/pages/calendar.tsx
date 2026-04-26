@@ -11,6 +11,8 @@ import { Button } from '../components/ui/button';
 import { Calendar } from '../components/ui/calendar';
 import { Card, CardContent, CardFooter } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
+import UserDropdown from '../components/UserDropdown';
+import { motion } from 'framer-motion';
 
 function CalendarPage() {
     const context = useContext(AuthContext) as any;
@@ -81,23 +83,23 @@ function CalendarPage() {
                     await context.scheduleMeeting(meetingDetails);
                 }
 
-                // Import the server URL defined in environment.js
-                // Add this import at the top of the file: import server from '../environment';
-                // However, doing this inline since it's just a variable. Let's fix the imports too.
-                // Wait, it's safer to just dynamically check window.location like environment.js does
-                const IS_PROD = window.location.hostname !== 'localhost';
-                const backendUrl = IS_PROD ? "https://streamifybackend-o6vn.onrender.com" : "http://localhost:8000";
-                
-                await fetch(`${backendUrl}/api/email/send-confirmation`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userEmail: userData?.email,
-                        meetingName: meetingDetails.meetingName,
-                        scheduledTime: meetingDetails.scheduledTime,
-                        meetingLink: `/${meetingId}`
-                    })
-                });
+                // Only send email if user has enabled email notifications in settings
+                const emailNotifsEnabled = localStorage.getItem('globalEmailNotifs') === 'true';
+                if (emailNotifsEnabled) {
+                    const IS_PROD = window.location.hostname !== 'localhost';
+                    const backendUrl = IS_PROD ? "https://streamifybackend-o6vn.onrender.com" : "http://localhost:8000";
+                    
+                    await fetch(`${backendUrl}/api/email/send-confirmation`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userEmail: userData?.email,
+                            meetingName: meetingDetails.meetingName,
+                            scheduledTime: meetingDetails.scheduledTime,
+                            meetingLink: `/${meetingId}`
+                        })
+                    });
+                }
 
                 const newMeeting = {
                     id: meetingId,
@@ -221,8 +223,23 @@ function CalendarPage() {
                     </div>
                 </SidebarBody>
             </Sidebar>
-            <div className="flex flex-1 overflow-y-auto w-full p-8 pb-32 md:pb-8 flex-col bg-transparent relative z-10">
-                <div className="max-w-4xl mx-auto w-full">
+            <div className="flex flex-1 flex-col overflow-y-auto w-full bg-transparent relative z-10">
+                {/* Navbar - Mobile Optimized */}
+                <motion.nav
+                    className="w-full px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl sticky top-0 md:hidden"
+                    initial={{ y: -100 }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <div className="flex items-center">
+                        <Logo size="sm" clickable={true} />
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <UserDropdown userInitial={userData?.name ? userData.name[0] : "U"} />
+                    </div>
+                </motion.nav>
+                <div className="flex flex-1 flex-col w-full p-8 pb-32 md:pb-8 relative z-10">
+                    <div className="max-w-4xl mx-auto w-full">
                     <h1 className="text-4xl font-bold mb-8">Calendar & Scheduling</h1>
 
                     {/* Ported Calendar20 component directly into the content layout with Premium Styling */}
@@ -455,6 +472,7 @@ function CalendarPage() {
                     )}
 
                 </div>
+            </div>
             </div>
         </div>
     );

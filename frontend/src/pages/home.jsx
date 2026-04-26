@@ -165,12 +165,15 @@ function HomeComponent() {
 
           {/* Navbar - Mobile Optimized (Top bar since Sidebar handles Desktop) */}
           <motion.nav
-            className="w-full px-4 sm:px-6 py-3 sm:py-4 flex justify-end items-center z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl sticky top-0 md:hidden"
+            className="w-full px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl sticky top-0 md:hidden"
             initial={{ y: -100 }}
             animate={{ y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="flex items-center gap-2 sm:gap-4 flex">
+            <div className="flex items-center">
+              <Logo size="sm" clickable={true} />
+            </div>
+            <div className="flex items-center gap-2 sm:gap-4">
               <UserDropdown userInitial={userData?.name ? userData.name[0] : "U"} />
             </div>
           </motion.nav>
@@ -277,50 +280,117 @@ function HomeComponent() {
               </motion.div>
             </div>
 
-            {/* Submit Review Card */}
-            <div className="w-full p-5 sm:p-8 bg-surface/30 backdrop-blur-xl border border-white/10 rounded-2xl pointer-events-auto">
-              <h3 className="text-xl sm:text-2xl font-bold mb-4">Leave a Review</h3>
-              {reviewSuccess ? (
-                <div className="p-4 bg-green-500/20 text-green-400 rounded-xl border border-green-500/30 font-medium">
-                  Thank you! Your review has been submitted and is now live on the landing page!
-                </div>
-              ) : (
-                <div className="space-y-4 text-left">
-                  <div className="flex gap-2 mb-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star 
-                        key={star} 
-                        className={`w-6 h-6 sm:w-8 sm:h-8 cursor-pointer transition-colors ${star <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`} 
-                        onClick={() => setReviewRating(star)}
-                      />
-                    ))}
-                  </div>
-                  <Input
-                    label="Your Role/Company (Optional)"
-                    value={reviewRole}
-                    onChange={(e) => setReviewRole(e.target.value)}
-                    placeholder="e.g. Product Manager at TechCo"
-                    className="bg-black/20"
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Your Review</label>
-                    <textarea 
-                      value={reviewContent}
-                      onChange={(e) => setReviewContent(e.target.value)}
-                      placeholder="How has Streamify helped your team?"
-                      className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 min-h-[100px]"
-                    />
-                  </div>
-                  <Button 
-                    variant="primary" 
-                    onClick={handleSubmitReview} 
-                    disabled={isSubmittingReview || !reviewContent.trim()}
+            {/* Submit Review Card — Premium */}
+            <motion.div
+              className="w-full group relative overflow-hidden rounded-[28px] border border-white/10 shadow-2xl pointer-events-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              {/* Background Image */}
+              <div 
+                className="absolute inset-0 z-0 bg-cover bg-center opacity-30 transition-transform duration-[15s] group-hover:scale-110"
+                style={{ backgroundImage: `url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2629&auto=format&fit=crop')` }}
+              />
+              <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0B0D17]/95 via-[#0B0D17]/85 to-indigo-900/30 backdrop-blur-[2px]" />
+
+              <div className="relative z-10 p-6 sm:p-10">
+                {reviewSuccess ? (
+                  <motion.div
+                    className="flex flex-col items-center text-center py-8"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
                   >
-                    {isSubmittingReview ? 'Submitting...' : 'Submit Testimonial'}
-                  </Button>
-                </div>
-              )}
-            </div>
+                    <div className="w-20 h-20 bg-emerald-500/15 rounded-full flex items-center justify-center mb-5 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+                      <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Thank You!</h3>
+                    <p className="text-gray-300 max-w-sm">Your review has been submitted and is now live on the landing page.</p>
+                  </motion.div>
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+                      <div>
+                        <div className="inline-block px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-3">
+                          Community
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-bold text-white">Share Your Experience</h3>
+                        <p className="text-gray-400 text-sm mt-1">Your feedback helps us improve Streamify for everyone</p>
+                      </div>
+                      {/* Star Rating */}
+                      <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star 
+                            key={star}
+                            className={`w-7 h-7 cursor-pointer transition-all duration-200 hover:scale-125 ${
+                              star <= reviewRating 
+                                ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.5)]' 
+                                : 'text-gray-600 hover:text-gray-400'
+                            }`}
+                            onClick={() => setReviewRating(star)}
+                          />
+                        ))}
+                        <span className="text-sm font-semibold text-yellow-400/80 ml-2 min-w-[2ch]">{reviewRating}.0</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Your Role <span className="text-gray-500">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={reviewRole}
+                          onChange={(e) => setReviewRole(e.target.value)}
+                          placeholder="e.g. Product Manager at TechCo"
+                          className="w-full bg-black/30 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Display Name</label>
+                        <input
+                          type="text"
+                          value={userData?.fullName || userData?.firstName || ''}
+                          disabled
+                          className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3.5 text-gray-400 text-sm cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-5">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Your Review</label>
+                      <textarea 
+                        value={reviewContent}
+                        onChange={(e) => setReviewContent(e.target.value)}
+                        placeholder="Tell us how Streamify has helped your team collaborate better..."
+                        rows={4}
+                        className="w-full bg-black/30 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm resize-none leading-relaxed"
+                      />
+                      <p className="text-xs text-gray-500 mt-1.5">{reviewContent.length}/500 characters</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <Button 
+                        variant="primary" 
+                        size="lg"
+                        onClick={handleSubmitReview} 
+                        disabled={isSubmittingReview || !reviewContent.trim()}
+                        className="w-full sm:w-auto shadow-indigo-500/25 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-8"
+                      >
+                        {isSubmittingReview ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Submitting...
+                          </span>
+                        ) : 'Submit Testimonial'}
+                      </Button>
+                      <p className="text-xs text-gray-500">Your review will appear on the landing page</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
 
           </div>
 

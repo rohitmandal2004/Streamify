@@ -139,8 +139,8 @@ export default function VideoMeetComponent() {
         videoQuality: localStorage.getItem('videoQuality') || '720p',
         noiseSuppression: localStorage.getItem('noiseSuppression') !== 'false',
         mirrorVideo: localStorage.getItem('mirrorVideo') !== 'false',
-        lowDataMode: localStorage.getItem('lowDataMode') === 'true',
-        closedCaptionsDefault: localStorage.getItem('closedCaptionsDefault') === 'true'
+        lowDataMode: localStorage.getItem('lowDataMode') === 'true' || localStorage.getItem('globalLimitData') === 'true',
+        closedCaptionsDefault: localStorage.getItem('closedCaptionsDefault') === 'true' || localStorage.getItem('globalTranslateSpeech') === 'true'
     });
 
     useEffect(() => {
@@ -148,6 +148,30 @@ export default function VideoMeetComponent() {
             setShowCaptions(true);
         }
     }, [localSettings.closedCaptionsDefault]);
+
+    // --- Global Settings Integration ---
+    // Auto-leave empty calls: if enabled and alone after 3 minutes, leave
+    useEffect(() => {
+        const leaveEmptyEnabled = localStorage.getItem('globalLeaveEmpty') !== 'false';
+        if (!leaveEmptyEnabled || askForUsername || isWaiting) return;
+
+        let leaveTimer = null;
+        const checkEmpty = () => {
+            if (videos.length === 0 && isSocketConnected) {
+                leaveTimer = setTimeout(() => {
+                    if (videos.length === 0) {
+                        handleShowToast("No one else in the call. Auto-leaving...", "warning");
+                        setTimeout(() => handleEndCall(), 2000);
+                    }
+                }, 3 * 60 * 1000); // 3 minutes
+            } else if (leaveTimer) {
+                clearTimeout(leaveTimer);
+                leaveTimer = null;
+            }
+        };
+        checkEmpty();
+        return () => { if (leaveTimer) clearTimeout(leaveTimer); };
+    }, [videos.length, isSocketConnected, askForUsername, isWaiting]);
 
     const handleLocalSettingsSave = (newSettings) => {
         setLocalSettings(newSettings);
